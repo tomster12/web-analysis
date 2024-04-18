@@ -94,7 +94,9 @@ for (let i = 0; i < HIGHLIGHT_COLOUR_COUNT; i++) {
 
 // Messages: char[][]
 function parseMessages(text, delim = ",") {
-    lines = text.split("\n");
+    if (text == "") return [];
+    let lines = text.split("\n");
+    lines = lines.filter((line) => line != "");
     lines = lines.map((line) => line.split(delim));
     return lines;
 }
