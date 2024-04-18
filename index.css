@@ -155,3 +155,11 @@ hr {
 .messages.use-gaps span {
     margin: 0.3rem;
 }
+
+.chart-container {
+    padding: 1rem;
+}
+
+.chart-container canvas {
+    height: 35rem;
+}

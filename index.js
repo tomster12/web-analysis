@@ -164,6 +164,19 @@ function calculateGaps(messages, gapLimit) {
     return gaps;
 }
 
+// Frequencies: dict<char, int>
+function calculateFrequencies(messages) {
+    let freqs = {};
+    for (let msg = 0; msg < messages.length; msg++) {
+        for (let col = 0; col < messages[msg].length; col++) {
+            const val = messages[msg][col];
+            if (freqs[val] == null) freqs[val] = 0;
+            freqs[val]++;
+        }
+    }
+    return freqs;
+}
+
 // ------------------------ Utility ------------------------
 
 function createElement(html) {
@@ -427,6 +440,62 @@ class VisGapsWidget {
     }
 }
 
+class VisFrequencyWidget {
+    static HTML = `
+        <div class='chart-container'>
+            <canvas id="freq-chart"></canvas>
+        </div>
+    `;
+
+    constructor(parent, textEvent) {
+        // Setup container and put input inside
+        this.container = new WidgetContainer(parent, "Letter Frequencies");
+        this.element = createElement(VisFrequencyWidget.HTML);
+        this.elementChart = this.element.querySelector("#freq-chart");
+        this.container.addContent(this.element);
+
+        // Setup text event listener
+        textEvent.subscribe((messages) => {
+            this.messages = messages;
+            this.messagesFreq = calculateFrequencies(messages);
+            this.updateChart();
+        });
+    }
+
+    updateChart() {
+        const ctx = this.elementChart.getContext("2d");
+        const keys = Object.keys(this.messagesFreq);
+        const values = keys.map((key) => this.messagesFreq[key]);
+        const max = Math.max(...values);
+        const colours = keys.map((key) => {
+            const pct = this.messagesFreq[key] / max;
+            return `hsl(214, 40%, ${80 - 60 * pct}%)`;
+        });
+        if (this.chart != null) this.chart.destroy();
+        this.chart = new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: keys,
+                datasets: [
+                    {
+                        data: values,
+                        backgroundColor: colours,
+                    },
+                ],
+            },
+            options: {
+                legend: {
+                    display: false,
+                },
+                scales: {
+                    yAxes: [{ ticks: { beginAtZero: true } }],
+                },
+                maintainAspectRatio: false,
+            },
+        });
+    }
+}
+
 // ------------------------ Driver ------------------------
 
 (() => {
@@ -439,12 +508,9 @@ class VisGapsWidget {
     // Create a gap distance visualisation listening on the user input
     const visGaps = new VisGapsWidget(ELEMENT_MAIN, userInput.outputEvent);
 
+    // Create a frequency visualisation listening on the user input
+    const visFreq = new VisFrequencyWidget(ELEMENT_MAIN, userInput.outputEvent);
+
     // Set initial value
-    // userInput.setContent([
-    //     "hellowsrln",
-    //     "hellongain",
-    //     "heldasgdsd",
-    //     "sdsdodssdd",
-    // ], "");
     userInput.setContent(EXAMPLE_MESSAGES, ",");
 })();
