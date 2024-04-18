@@ -131,24 +131,27 @@ hr {
 .messages {
     background-color: #ffffff;
     margin: 1.2rem;
-    padding: 0.2rem;
+    padding: 0.6rem;
     overflow-x: scroll;
     font-family: Cousine;
+    font-size: 1.4rem;
+    white-space: nowrap;
 }
 
-.messages-table {
-    border-spacing: 0rem;
-    margin: 0.5rem;
-}
-
-.messages-table.use-gaps {
-    margin: 0;
-    border-spacing: 0.5rem;
-}
-
-.messages-table td {
-    background-color: #e3e3e3;
+.messages.use-gaps {
     padding: 0.3rem;
-    font-size: 1.5rem;
-    text-align: right;
+}
+
+.messages span {
+    display: inline-block;
+    background-color: #e3e3e3;
+    margin: 0rem;
+    width: 2.2rem;
+    height: 2.2rem;
+    line-height: 2.2rem;
+    text-align: center;
+}
+
+.messages.use-gaps span {
+    margin: 0.3rem;
 }

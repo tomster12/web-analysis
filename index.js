@@ -289,30 +289,30 @@ class InputWidget {
 
 class MessagesContent {
     static HTML = `
-        <div class="messages">    
-            <table class="messages-table use-gaps"></table>
-        </div>
+        <div class="messages use-gaps"></div>
     `;
 
     constructor() {
         this.hasGaps = true;
         this.element = createElement(MessagesContent.HTML);
-        this.elementTable = this.element.querySelector(".messages-table");
     }
 
     setMessages(messages, highlight = null) {
-        // Create table with messages
+        // Create div for each row, span for each cell
         this.messages = messages;
-        this.elementTable.innerHTML = "";
         this.cells = [];
+        this.element.innerHTML = "";
         for (let msg = 0; msg < messages.length; msg++) {
-            const row = this.elementTable.insertRow();
+            const row = createElement(`<div class="message"></div>`);
             this.cells.push([]);
             for (let col = 0; col < messages[msg].length; col++) {
-                const cell = row.insertCell();
-                cell.textContent = messages[msg][col];
+                const cell = createElement(
+                    `<span>${messages[msg][col]}</span>`
+                );
+                row.appendChild(cell);
                 this.cells[msg].push(cell);
             }
+            this.element.appendChild(row);
         }
 
         // Highlight letters
@@ -336,7 +336,7 @@ class MessagesContent {
     }
 
     toggleGaps() {
-        this.elementTable.classList.toggle("use-gaps");
+        this.element.classList.toggle("use-gaps");
         this.hasGaps = !this.hasGaps;
     }
 }
@@ -370,6 +370,8 @@ class VisSharedWidget {
 
 class VisGapsWidget {
     constructor(parent, textEvent, gapLimit = 15) {
+        this.showGaps = false;
+
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Gap Distances");
         this.messagesContent = new MessagesContent();
@@ -384,11 +386,44 @@ class VisGapsWidget {
                 : "assets/icon-expand.png";
         }, "assets/icon-shrink.png");
 
+        // Setup toggle show gaps button
+        this.toggleShowGapsButton = this.container.addButton(() => {
+            this.showGaps = !this.showGaps;
+            this.toggleShowGapsButton.src = this.showGaps
+                ? "assets/icon-eye.png"
+                : "assets/icon-ruler.png";
+
+            // Update message content
+            if (this.showGaps) {
+                this.messagesContent.setMessages(
+                    this.messagesGaps,
+                    this.messagesGaps
+                );
+            } else {
+                this.messagesContent.setMessages(
+                    this.messages,
+                    this.messagesGaps
+                );
+            }
+        }, "assets/icon-ruler.png");
+
         // Setup text event listener
         textEvent.subscribe((messages) => {
             this.messages = messages;
             this.messagesGaps = calculateGaps(messages, this.gapLimit);
-            this.messagesContent.setMessages(this.messages, this.messagesGaps);
+
+            // Update message content
+            if (this.showGaps) {
+                this.messagesContent.setMessages(
+                    this.messagesGaps,
+                    this.messagesGaps
+                );
+            } else {
+                this.messagesContent.setMessages(
+                    this.messages,
+                    this.messagesGaps
+                );
+            }
         });
     }
 }
