@@ -1,0 +1,154 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* -------------------- */
+
+@font-face {
+    font-family: Oxygen;
+    src: url("assets/oxygen.regular.ttf");
+}
+
+@font-face {
+    font-family: Cousine;
+    src: url("assets/Cousine-Regular.ttf");
+}
+
+:root {
+    font-size: 10px;
+    font-family: Oxygen;
+    color: #232323;
+    --border-color: #686868;
+}
+
+body {
+    padding: 20px;
+    background-color: #fffaf4;
+}
+
+.header {
+    text-align: center;
+    font-size: 2rem;
+    margin: 2rem;
+}
+
+hr {
+    border: 1px solid #9d9d9d;
+    margin: 0 auto;
+}
+
+.main {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+    padding: 3rem 1rem;
+}
+
+/* -------------------- */
+
+.widget-container {
+    border-bottom: 0.2rem solid var(--border-color);
+    border-left: none;
+    border-right: none;
+    font-size: 1.4rem;
+}
+
+.widget-header {
+    background-color: var(--border-color);
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem;
+}
+
+.widget-title {
+    height: 1.4rem;
+    padding-left: 1.4rem;
+    font-size: 1.2rem;
+    color: #ededed;
+}
+
+.widget-buttons {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+}
+
+.widget-buttons img {
+    background-color: #e2e2e2;
+    height: 1.9rem;
+    margin: 0.2rem;
+    border: 0.3rem solid #e2e2e2;
+    border-radius: 0.5rem;
+    box-shadow: 0.1rem 0.1rem 0.2rem #494949;
+}
+
+.widget-buttons img:hover {
+    background-color: #cacaca;
+    border: 0.2rem solid #cacaca;
+    cursor: pointer;
+}
+
+.widget-content {
+    background-color: #e2e2e2;
+    padding: 0.01px;
+    min-height: 1rem;
+}
+
+/* -------------------- */
+
+.user-input-wrapper {
+    display: flex;
+    flex-direction: row;
+    padding: 1.2rem;
+    overflow: hidden;
+}
+
+.user-input-icon {
+    height: 2rem;
+    margin-top: 0.6rem;
+    margin-right: 1rem;
+}
+
+.user-input {
+    flex-grow: 1;
+    background-color: #ffffff;
+    padding: 0.6rem;
+    border-radius: 0.2rem;
+    overflow: hidden;
+    font-size: 1.5rem;
+}
+
+.user-input:focus {
+    outline: none;
+}
+
+/* -------------------- */
+
+.messages {
+    background-color: #ffffff;
+    margin: 1.2rem;
+    padding: 0.2rem;
+    overflow-x: scroll;
+    font-family: Cousine;
+}
+
+.messages-table {
+    border-spacing: 0rem;
+    margin: 0.5rem;
+}
+
+.messages-table.use-gaps {
+    margin: 0;
+    border-spacing: 0.5rem;
+}
+
+.messages-table td {
+    background-color: #e3e3e3;
+    padding: 0.3rem;
+    font-size: 1.5rem;
+    text-align: right;
+}
