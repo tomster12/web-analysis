@@ -147,18 +147,18 @@ function calculateGaps(messages, gapLimit, includeEnd = false) {
         // For each column in the message
         for (let col = 0; col < messages[msg].length; col++) {
             val = messages[msg][col];
+            gaps[msg].push(0);
 
             // 0 by default, on gap set start
-            if (found[val] == null) {
-                found[val] = col;
-                gaps[msg].push(0);
-            } else {
+            if (found[val] != null) {
                 const diff = col - found[val];
-                if (diff <= gapLimit) gaps[msg][found[val]] = diff;
-                found[val] = col;
-                if (includeEnd) gaps[msg].push(diff);
-                else gaps[msg].push(0);
+                if (diff <= gapLimit) {
+                    gaps[msg][found[val]] = diff;
+                    if (includeEnd) gaps[msg][col] = diff;
+                }
             }
+
+            found[val] = col;
         }
     }
 
