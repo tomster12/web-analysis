@@ -305,10 +305,10 @@ hr {
     flex-direction: row;
     align-items: center;
     margin: 1rem;
-    width: 30rem;
+    width: 25rem;
 }
 
 .stats-label {
     font-weight: bold;
-    width: 22rem;
+    width: 18rem;
 }
