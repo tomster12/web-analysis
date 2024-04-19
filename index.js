@@ -446,8 +446,8 @@ class InputWidget {
         this.delimDropdown = new Dropdown(
             {
                 comma: "assets/icon-comma.png",
-                letter: "assets/icon-a.png",
                 dot: "assets/icon-dot.png",
+                letter: "assets/icon-a.png",
             },
             "comma",
             (delimOption) => this.setDelim(delimOption)
