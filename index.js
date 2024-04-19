@@ -1,3 +1,9 @@
+// TODO:
+// - Properly sort alphabet in parseAlphabet()
+// - Delta button to toggle MOD alphabet length
+// - IoC calculation and find better place for messages IoC
+// - Base conversion in BaselineWidget
+
 const ELEMENT_MAIN = document.querySelector(".main");
 
 const EXAMPLE_MESSAGES = [
