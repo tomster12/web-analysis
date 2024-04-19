@@ -550,7 +550,7 @@ class BaselineWidget {
     static HTML = `
         <div class="baseline-container">
             <div class="baseline-convert">
-                <p>Parse Mode</p>
+                <p>Convert Mode</p>
             </div>
             <div class="baseline-parsed"></div>
             <hr>
@@ -565,7 +565,7 @@ class BaselineWidget {
         this.convertOption = "None";
 
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Parsed Ciphertext");
+        this.container = new WidgetContainer(parent, "Converted Ciphertext");
         this.element = createElement(BaselineWidget.HTML);
         this.elementConvert = this.element.querySelector(".baseline-convert");
         this.elementConvertDropdown = new Dropdown(
