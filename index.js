@@ -487,7 +487,6 @@ class InputWidget {
 
     constructor(parent, title = "Input") {
         this.messages = [];
-        this.delim = "";
 
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, title);
@@ -498,39 +497,17 @@ class InputWidget {
         // Setup onInput event and listeners
         this.outputEvent = new ListenableEvent();
         this.elementInput.addEventListener("input", (e) => {
-            this.reparseMessages();
+            this.messages = this.elementInput.innerText;
+            this.outputEvent.fire(this.messages);
         });
-
-        // Setup delim dropdown
-        this.delimDropdown = new Dropdown(
-            {
-                comma: "assets/icon-comma.png",
-                dot: "assets/icon-dot.png",
-                letter: "assets/icon-a.png",
-            },
-            "comma",
-            (delimOption) => this.setDelim(delimOption)
-        );
-        this.container.addExtra(this.delimDropdown.element);
     }
 
-    setContent(input, delimOption) {
+    setContent(input) {
         this.elementInput.innerHTML = "";
         input.forEach((line) => {
             this.elementInput.innerHTML += `<div>${line}</div> `;
         });
-        this.setDelim(delimOption);
-    }
-
-    setDelim(delimOption) {
-        if (delimOption == "letter") this.delim = "";
-        else if (delimOption == "comma") this.delim = ",";
-        else if (delimOption == "dot") this.delim = ".";
-        this.reparseMessages();
-    }
-
-    reparseMessages() {
-        this.messages = parseMessages(this.elementInput.innerText, this.delim);
+        this.messages = this.elementInput.innerText;
         this.outputEvent.fire(this.messages);
     }
 }
@@ -539,9 +516,11 @@ class BaselineWidget {
     static HTML = `
         <div class="baseline-container">
             <div class="baseline-select-container">
+                <p>Delimeter</p>
+                <div class="baseline-select-delimeter"></div>
                 <p>Convert Mode</p>
-                <div class="baseline-select"></div>
-            </div>
+                <div class="baseline-select-convert"></div>
+                </div>
             <div class="baseline-output"></div>
             <hr>
             <div class="baseline-alphabet-container">
@@ -552,13 +531,28 @@ class BaselineWidget {
     `;
 
     constructor(parent, inputEvent) {
+        this.delimeter = "comma";
         this.convertOption = "None";
 
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Converted Ciphertext");
+        this.container = new WidgetContainer(parent, "Parsed Ciphertext");
         this.element = createElement(BaselineWidget.HTML);
-        this.elementSelect = this.element.querySelector(".baseline-select");
-        this.elementSelectDropdown = new Dropdown(
+        this.elementSelectDelimeter = this.element.querySelector(".baseline-select-delimeter");
+        this.elementSelectDelimeterDropdown = new Dropdown(
+            {
+                comma: "assets/icon-comma.png",
+                dot: "assets/icon-dot.png",
+                letter: "assets/icon-a.png",
+            },
+            "comma",
+            (delimeter) => {
+                this.delimeter = delimeter;
+                if (this.inputMessages != null) this.processMessages();
+            }
+        );
+        this.elementSelectDelimeter.appendChild(this.elementSelectDelimeterDropdown.element);
+        this.elementSelectConvert = this.element.querySelector(".baseline-select-convert");
+        this.elementSelectConvertDropdown = new Dropdown(
             {
                 None: "assets/icon-identity.png",
                 Int: "assets/icon-123.png",
@@ -567,9 +561,12 @@ class BaselineWidget {
                 FromAscii: "assets/icon-from-ascii.png",
             },
             "None",
-            (convertOption) => this.setConvertMode(convertOption)
+            (convertOption) => {
+                this.convertOption = convertOption;
+                if (this.inputMessages != null) this.processMessages();
+            }
         );
-        this.elementSelect.appendChild(this.elementSelectDropdown.element);
+        this.elementSelectConvert.appendChild(this.elementSelectConvertDropdown.element);
         this.messagesContent = new MessagesContent();
         this.elementOutput = this.element.querySelector(".baseline-output");
         this.elementOutput.appendChild(this.messagesContent.element);
@@ -590,21 +587,14 @@ class BaselineWidget {
         inputEvent.subscribe((messages) => {
             this.inputMessages = messages;
             this.processMessages();
-            this.messagesContent.setMessages(this.outputMessages);
         });
-    }
-
-    setConvertMode(convertOption) {
-        this.convertOption = convertOption;
-        if (this.inputMessages != null) {
-            this.processMessages();
-            this.messagesContent.setMessages(this.outputMessages);
-        }
     }
 
     processMessages() {
         // Convert input to output messages
-        this.outputMessages = convertMessages(this.inputMessages, this.convertOption);
+        let delim = this.delimeter == "comma" ? "," : this.delimeter == "dot" ? "." : "";
+        let messages = parseMessages(this.inputMessages, delim);
+        this.outputMessages = convertMessages(messages, this.convertOption);
 
         // Parse alphabet and add spans to element
         this.alphabet = parseAlphabet(this.outputMessages);
@@ -623,6 +613,7 @@ class BaselineWidget {
         // Set max width of span with this.element style
         this.elementAlphabet.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
 
+        this.messagesContent.setMessages(this.outputMessages);
         this.outputEvent.fire(this.outputMessages, this.alphabet);
     }
 }
@@ -647,20 +638,21 @@ class StatsWidget {
     }
 
     recalculateStats() {
-        // Caclualte stats
+        // Calculate stats
         this.calculatedStats = {};
         this.calculatedStats["Alphabet Size"] = this.alphabet.length;
-        let totalChars = 0;
-        for (let msg = 0; msg < this.messages.length; msg++) {
-            totalChars += this.messages[msg].length;
-        }
-        this.calculatedStats["Total Characters"] = totalChars;
+        let chars = 0;
+        for (let msg = 0; msg < this.messages.length; msg++) chars += this.messages[msg].length;
         this.calculatedStats["Message Count"] = this.messages.length;
+        this.calculatedStats["Total Chars"] = chars;
 
         // Calculate IoC for all + each message
-        this.calculatedStats["IoC"] = calculateIoC(this.messages, this.alphabet.length);
+        this.calculatedStats["Total IoC"] = calculateIoC(this.messages, this.alphabet.length);
         for (let msg = 0; msg < this.messages.length; msg++) {
-            this.calculatedStats[`IoC ${msg}`] = calculateIoC([this.messages[msg]], this.alphabet.length);
+            this.calculatedStats[`Msg ${msg}: Chars`] = this.messages[msg].length;
+        }
+        for (let msg = 0; msg < this.messages.length; msg++) {
+            this.calculatedStats[`Msg ${msg}: IoC`] = calculateIoC([this.messages[msg]], this.alphabet.length);
         }
 
         // Turn stats into elements
@@ -696,7 +688,6 @@ class VisAlignmentWidget {
         inputEvent.subscribe((messages) => {
             this.messages = messages;
             this.messagesAlignments = calculateAlignments(messages);
-            console.log(this.messagesAlignments);
             this.messagesContent.setMessages(this.messages, this.messagesAlignments);
         });
     }
@@ -767,12 +758,13 @@ class VisFrequencyWidget {
         </div>
     `;
 
-    constructor(parent, inputEvent) {
+    constructor(parent, inputEvent, sorted = false) {
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Letter Frequencies");
+        this.container = new WidgetContainer(parent, "Letter Frequencies" + (sorted ? " (Sorted)" : ""));
         this.element = createElement(VisFrequencyWidget.HTML);
         this.elementChart = this.element.querySelector("#freq-chart");
         this.container.addContent(this.element);
+        this.sorted = sorted;
 
         // Setup text event listener
         inputEvent.subscribe((messages) => {
@@ -785,6 +777,7 @@ class VisFrequencyWidget {
     updateChart() {
         const ctx = this.elementChart.getContext("2d");
         const keys = Object.keys(this.messagesFreq);
+        if (this.sorted) keys.sort((a, b) => this.messagesFreq[b] - this.messagesFreq[a]);
         const values = keys.map((key) => this.messagesFreq[key]);
         const max = Math.max(...values);
         const colours = keys.map((key) => {
@@ -890,25 +883,14 @@ class VisDeltasWidget {
 (() => {
     // Initialize user input
     const userInput = new InputWidget(ELEMENT_MAIN, "Input Ciphertext");
-
-    // Create a baseline visualisation listening on the user input
     const visBaseline = new BaselineWidget(ELEMENT_MAIN, userInput.outputEvent);
-
-    // Create a stats widget listening on the user input
     const statsWidget = new StatsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-
-    // Create a shared section visualisation listening on the user input
     const visShared = new VisAlignmentWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-
-    // Create a gap distance visualisation listening on the user input
     const visGaps = new VisGapsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-
-    // Create a frequency visualisation listening on the user input
     const visFreq = new VisFrequencyWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-
-    // Create a delta visualisation listening on the user input
+    const visFreqSorted = new VisFrequencyWidget(ELEMENT_MAIN, visBaseline.outputEvent, true);
     const visDeltas = new VisDeltasWidget(ELEMENT_MAIN, visBaseline.outputEvent);
 
     // Set initial value
-    userInput.setContent(EXAMPLE_MESSAGES, ",");
+    userInput.setContent(EXAMPLE_MESSAGES, "comma");
 })();

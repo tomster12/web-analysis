@@ -236,12 +236,16 @@ hr {
     margin-right: 1.4rem;
     font-size: 1.6rem;
 }
+.baseline-select-delimeter,
+.baseline-select-convert {
+    margin-right: 1.4rem;
+}
 
-.baseline-select .widget-dropdown {
+.baseline-select-container .widget-dropdown {
     background-color: #cbcbcb;
 }
 
-.baseline-select .widget-dropdown:hover {
+.baseline-select-container .widget-dropdown:hover {
     background-color: #aeaeae;
     cursor: pointer;
 }
@@ -286,7 +290,7 @@ hr {
 }
 
 .chart-container canvas {
-    height: 35rem;
+    height: 30rem;
 }
 
 /* -------------------- */
@@ -305,10 +309,10 @@ hr {
     flex-direction: row;
     align-items: center;
     margin: 1rem;
-    width: 27rem;
+    width: 21rem;
 }
 
 .stats-label {
     font-weight: bold;
-    width: 18rem;
+    width: 15rem;
 }
