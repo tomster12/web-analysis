@@ -231,6 +231,23 @@ class MessagesContent {
     }
 
     setMessages(messages, highlight = null) {
+        // Find fixed width based on maximum character count
+        let maxWidth = 0;
+        for (let msg = 0; msg < messages.length; msg++) {
+            for (let col = 0; col < messages[msg].length; col++) {
+                maxWidth = Math.max(
+                    maxWidth,
+                    messages[msg][col].toString().length
+                );
+            }
+        }
+
+        // Set max width of span with this.element style
+        this.element.style.setProperty(
+            "--max-width",
+            `${maxWidth * 1.4 * 0.85}rem`
+        );
+
         // Create div for each row, span for each cell
         this.messages = messages;
         this.cells = [];
@@ -612,7 +629,6 @@ class VisDeltasWidget {
         this.container = new WidgetContainer(parent, "Deltas");
         this.messagesContent = new MessagesContent("Numeric");
         this.container.addContent(this.messagesContent.element);
-        this.messagesContent.element.classList.add("small-text");
 
         // Setup toggle gaps button
         this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {

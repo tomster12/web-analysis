@@ -202,16 +202,13 @@ hr {
     display: inline-block;
     background-color: #e3e3e3;
     font-family: Cousine;
-    font-size: 1.4rem;
     margin: 0rem;
-    width: 2.2rem;
     height: 2.2rem;
     line-height: 2.2rem;
     text-align: center;
-}
-
-.messages.small-text span {
-    font-size: 1.1rem;
+    padding: 0.2rem;
+    font-size: 1.4rem;
+    width: var(--max-width);
 }
 
 .messages.use-gaps {
