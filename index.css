@@ -20,7 +20,6 @@
     font-size: 10px;
     font-family: Oxygen;
     color: #232323;
-    --border-color: #686868;
 }
 
 body {
@@ -49,14 +48,18 @@ hr {
 /* -------------------- */
 
 .widget-container {
-    border-bottom: 0.2rem solid var(--border-color);
+    border-bottom: 0.2rem solid #686868;
     border-left: none;
     border-right: none;
     font-size: 1.4rem;
 }
 
+.widget-container.closed {
+    border-bottom: none;
+}
+
 .widget-header {
-    background-color: var(--border-color);
+    background-color: #686868;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
@@ -64,11 +67,18 @@ hr {
     padding: 0.4rem;
 }
 
+.widget-header:hover {
+    background-color: #575757;
+    cursor: pointer;
+}
+
 .widget-title {
     height: 1.4rem;
+    margin: 0.5rem 0;
     padding-left: 1.4rem;
     font-size: 1.2rem;
     color: #ededed;
+    user-select: none;
 }
 
 .widget-buttons {

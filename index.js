@@ -213,12 +213,25 @@ class WidgetContainer {
     `;
 
     constructor(parent, title = "") {
+        this.isClosed = false;
+
         // Setup container
         this.element = createElement(WidgetContainer.HTML);
+        this.elementHeader = this.element.querySelector(".widget-header");
         this.elementTitle = this.element.querySelector(".widget-title");
         this.elementButtons = this.element.querySelector(".widget-buttons");
         this.elementContent = this.element.querySelector(".widget-content");
         if (parent != null) parent.appendChild(this.element);
+
+        // Add title close listener
+        this.elementHeader.addEventListener("click", () => {
+            console.log("Header clicked");
+            this.isClosed = !this.isClosed;
+            this.element.classList.toggle("closed");
+            this.elementContent.style.display = this.isClosed
+                ? "none"
+                : "block";
+        });
 
         // Set title
         this.setTitle(title);
@@ -226,7 +239,11 @@ class WidgetContainer {
 
     addButton(callback, iconPath) {
         const button = createElement(`<img src="${iconPath}">`);
-        button.addEventListener("click", callback);
+        button.addEventListener("click", (e) => {
+            console.log("Button clicked");
+            e.stopPropagation();
+            callback();
+        });
         this.elementButtons.appendChild(button);
         return button;
     }
