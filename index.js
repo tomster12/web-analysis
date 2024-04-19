@@ -203,14 +203,14 @@ function calculateGaps(messages, gapLimit, includeEnd = false) {
         // For each column in the message
         for (let col = 0; col < messages[msg].length; col++) {
             val = messages[msg][col];
-            gaps[msg].push(0);
+            gaps[msg].push([]);
 
             // 0 by default, on gap set start
             if (found[val] != null) {
                 const diff = col - found[val];
                 if (diff <= gapLimit) {
-                    gaps[msg][found[val]] = diff;
-                    if (includeEnd) gaps[msg][col] = diff;
+                    gaps[msg][found[val]].push(diff);
+                    if (includeEnd) gaps[msg][col].push(diff);
                 }
             }
 
@@ -351,11 +351,21 @@ class MessagesContent {
             for (let col = 0; col < this.messages[msg].length; col++) {
                 if (this.highlightMode == "Categoric") {
                     // Categoric: Pick highlight from colour list
-                    if (highlight[msg][col] > 0) {
-                        this.cells[msg][col].style.backgroundColor =
+                    const colA =
+                        HIGHLIGHT_COLOURS[
+                            highlight[msg][col][0] % HIGHLIGHT_COLOUR_COUNT
+                        ];
+                    if (highlight[msg][col].length == 1) {
+                        this.cells[msg][col].style.backgroundColor = colA;
+                    } else if (highlight[msg][col].length == 2) {
+                        // Gradient between 2 colours
+                        const colB =
                             HIGHLIGHT_COLOURS[
-                                highlight[msg][col] % HIGHLIGHT_COLOUR_COUNT
+                                highlight[msg][col][1] % HIGHLIGHT_COLOUR_COUNT
                             ];
+                        this.cells[msg][
+                            col
+                        ].style.backgroundImage = `linear-gradient(to right, ${colA}, ${colB})`;
                     }
                     this.cells[msg][col].title = highlight[msg][col];
                 } else if (this.highlightMode == "Numeric") {
@@ -785,7 +795,7 @@ class VisGapsWidget {
                 ? "assets/icon-eye.png"
                 : "assets/icon-ruler.png";
             this.messagesContent.setMessages(
-                this.showGaps ? this.messagesGaps : this.messages,
+                this.showGaps ? this.messageGapValues : this.messages,
                 this.messagesGaps
             );
         });
@@ -817,8 +827,21 @@ class VisGapsWidget {
             this.gapLimit,
             this.includeEnd
         );
+
+        this.messageGapValues = [];
+        for (let msg = 0; msg < this.messagesGaps.length; msg++) {
+            this.messageGapValues.push([]);
+            for (let col = 0; col < this.messagesGaps[msg].length; col++) {
+                this.messageGapValues[msg].push(
+                    this.messagesGaps[msg][col].length == 0
+                        ? 0
+                        : this.messagesGaps[msg][col][0]
+                );
+            }
+        }
+
         this.messagesContent.setMessages(
-            this.showGaps ? this.messagesGaps : this.messages,
+            this.showGaps ? this.messageGapValues : this.messages,
             this.messagesGaps
         );
     }
