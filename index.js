@@ -184,7 +184,7 @@ function calculateGaps(messages, gapLimit, includeEnd = false) {
                 const diff = col - found[val];
                 if (diff <= gapLimit) {
                     gaps[msg][found[val]].push(diff);
-                    if (includeEnd) gaps[msg][col].push(diff);
+                    if (includeEnd) gaps[msg][col].push(-diff);
                 }
             }
 
@@ -320,16 +320,16 @@ class MessagesContent {
                     if (!Array.isArray(highlight)) {
                         // Categoric: Single value colour
                         if (highlight > 0) {
-                            var colA = HIGHLIGHTS[(highlight - 1) % HIGHLIGHT_COUNT];
+                            var colA = HIGHLIGHTS[Math.abs(highlight - 1) % HIGHLIGHT_COUNT];
                             this.cells[msg][col].style.backgroundColor = colA;
                         }
                     } else {
                         // Categoric: Allow gradient
-                        var colA = HIGHLIGHTS[highlight[0] % HIGHLIGHT_COUNT];
+                        var colA = HIGHLIGHTS[Math.abs(highlight[0]) % HIGHLIGHT_COUNT];
                         if (highlight.length == 1) {
                             this.cells[msg][col].style.backgroundColor = colA;
                         } else if (highlight.length == 2) {
-                            const colB = HIGHLIGHTS[highlight[1] % HIGHLIGHT_COUNT];
+                            const colB = HIGHLIGHTS[Math.abs(highlight[1]) % HIGHLIGHT_COUNT];
                             const style = `linear-gradient(to right, ${colA}, ${colB})`;
                             this.cells[msg][col].style.backgroundImage = style;
                         }
@@ -499,7 +499,7 @@ class InputWidget {
 
             <div class="input-alphabet-container">
                 <img src="assets/icon-alphabet.png">
-                <div class="input-alphabet"></div>
+                <div class="input-alphabet use-gaps"></div>
             </div>
         </div>
     `;
@@ -556,6 +556,7 @@ class InputWidget {
         this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
             this.parsedContent.toggleSpacing();
             this.toggleSpacingButton.element.src = this.parsedContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
+            this.elementAlphabet.classList.toggle("use-gaps");
         });
         this.container.addExtra(this.toggleSpacingButton.element);
 
@@ -727,7 +728,7 @@ class GapsWidget {
             this.messageGapValues.push([]);
             for (let col = 0; col < this.messagesGaps[msg].length; col++) {
                 this.messageGapValues[msg].push(
-                    this.messagesGaps[msg][col].length == 0 ? 0 : this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1]
+                    this.messagesGaps[msg][col].length == 0 ? 0 : Math.abs(this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1])
                 );
             }
         }
