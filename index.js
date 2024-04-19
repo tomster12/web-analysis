@@ -88,11 +88,15 @@ const EXAMPLE_MESSAGES = [
     ],
 ];
 
-const HIGHLIGHT_COLOUR_COUNT = 15;
 let HIGHLIGHT_COLOURS = [];
+const HIGHLIGHT_COLOUR_COUNT = 15;
+const HIGHLIGHT_COLOUR_SPIRALS = 4;
+const HIGHLIGHT_COLOUR_GAP = 360 / HIGHLIGHT_COLOUR_SPIRALS;
 for (let i = 0; i < HIGHLIGHT_COLOUR_COUNT; i++) {
-    const pct = (i / HIGHLIGHT_COLOUR_COUNT) % 1;
-    HIGHLIGHT_COLOURS.push(`hsl(${360 * pct}, 75%, 75%)`);
+    let base = (i % HIGHLIGHT_COLOUR_SPIRALS) * HIGHLIGHT_COLOUR_GAP;
+    let hue =
+        (base + (i / HIGHLIGHT_COLOUR_COUNT) * HIGHLIGHT_COLOUR_GAP) % 360;
+    HIGHLIGHT_COLOURS.push(`hsl(${hue}, 75%, 75%)`);
 }
 
 // ------------------------ Crypto ------------------------
@@ -835,7 +839,9 @@ class VisGapsWidget {
                 this.messageGapValues[msg].push(
                     this.messagesGaps[msg][col].length == 0
                         ? 0
-                        : this.messagesGaps[msg][col][0]
+                        : this.messagesGaps[msg][col][
+                              this.messagesGaps[msg][col].length - 1
+                          ]
                 );
             }
         }
