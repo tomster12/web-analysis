@@ -81,13 +81,13 @@ hr {
     user-select: none;
 }
 
-.widget-buttons {
+.widget-extra {
     display: flex;
     flex-direction: row-reverse;
     align-items: center;
 }
 
-.widget-buttons img {
+.widget-button {
     background-color: #e2e2e2;
     height: 1.9rem;
     margin: 0.2rem;
@@ -96,10 +96,61 @@ hr {
     box-shadow: 0.1rem 0.1rem 0.2rem #494949;
 }
 
-.widget-buttons img:hover {
+.widget-button:hover {
     background-color: #cacaca;
     border: 0.2rem solid #cacaca;
     cursor: pointer;
+}
+
+.widget-dropdown {
+    position: relative;
+    padding: 0.3rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    background-color: #e2e2e2;
+    border-radius: 0.5rem;
+}
+
+.widget-dropdown:hover {
+    background-color: #cacaca;
+    cursor: pointer;
+}
+
+.widget-dropdown-icon-current {
+    height: 1.9rem;
+    padding-right: 0.3rem;
+}
+
+.widget-dropdown-icon-select {
+    height: 1rem;
+}
+
+.widget-dropdown-options {
+    position: absolute;
+    left: 0px;
+    top: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: #eeeeee;
+    border: 1px solid #686868;
+    border-radius: 0.5rem;
+    box-shadow: 0.1rem 0.1rem 0.3rem #646464;
+    overflow: hidden;
+}
+
+.widget-dropdown-options div {
+    padding: 0.5rem;
+}
+
+.widget-dropdown-options div:hover {
+    background-color: #cacaca;
+    cursor: pointer;
+}
+
+.widget-dropdown-options img {
+    height: 2rem;
 }
 
 .widget-content {

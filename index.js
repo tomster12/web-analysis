@@ -101,7 +101,7 @@ function parseMessages(text, delim = ",") {
 }
 
 // Shared: int[][]
-function calculateShared(messages) {
+function calculateAlignments(messages) {
     const maxLength = Math.max(...messages.map((line) => line.length));
     let shared = [];
     for (let i = 0; i < messages.length; i++) shared.push([]);
@@ -211,6 +211,163 @@ class ListenableEvent {
     }
 }
 
+class MessagesContent {
+    static HTML = `
+        <div class="messages use-gaps"></div>
+    `;
+
+    constructor(highlightMode = "Categoric") {
+        // Assert highlightMode
+        if (highlightMode != "Categoric" && highlightMode != "Numeric") {
+            throw new Error("Invalid highlight mode");
+        }
+
+        // Setup content variables
+        this.messages = [];
+        this.highlight = null;
+        this.highlightMode = highlightMode;
+        this.useSpacing = true;
+        this.element = createElement(MessagesContent.HTML);
+    }
+
+    setMessages(messages, highlight = null) {
+        // Create div for each row, span for each cell
+        this.messages = messages;
+        this.cells = [];
+        this.element.innerHTML = "";
+        for (let msg = 0; msg < messages.length; msg++) {
+            const row = createElement(`<div class="message"></div>`);
+            this.cells.push([]);
+            for (let col = 0; col < messages[msg].length; col++) {
+                const cell = createElement(
+                    `<span>${messages[msg][col]}</span>`
+                );
+                row.appendChild(cell);
+                this.cells[msg].push(cell);
+            }
+            this.element.appendChild(row);
+        }
+
+        // Highlight letters
+        this.setHighlight(highlight);
+    }
+
+    setHighlight(highlight) {
+        this.highlight = highlight;
+        if (highlight == null) return;
+
+        // Highlight every span
+        for (let msg = 0; msg < this.messages.length; msg++) {
+            for (let col = 0; col < this.messages[msg].length; col++) {
+                if (this.highlightMode == "Categoric") {
+                    // Categoric: Pick highlight from colour list
+                    if (highlight[msg][col] > 0) {
+                        this.cells[msg][col].style.backgroundColor =
+                            HIGHLIGHT_COLOURS[
+                                highlight[msg][col] % HIGHLIGHT_COLOUR_COUNT
+                            ];
+                    }
+                    this.cells[msg][col].title = highlight[msg][col];
+                } else if (this.highlightMode == "Numeric") {
+                    // Numeric: Set highlight as colour
+                    this.cells[msg][col].style.backgroundColor =
+                        highlight[msg][col];
+                }
+            }
+        }
+    }
+
+    toggleSpacing() {
+        this.element.classList.toggle("use-gaps");
+        this.useSpacing = !this.useSpacing;
+    }
+}
+
+class Button {
+    static HTML = `<img class="widget-button">`;
+
+    constructor(iconPath, callback) {
+        this.element = createElement(Button.HTML);
+        this.element.src = iconPath;
+
+        // Setup event and listener
+        this.clickEvent = new ListenableEvent();
+        this.element.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.clickEvent.fire(e);
+        });
+
+        // Subscribe callback if provided
+        if (callback != null) this.clickEvent.subscribe(callback);
+    }
+}
+
+class Dropdown {
+    static HTML = `
+        <div class="widget-dropdown">
+            <img class="widget-dropdown-icon-current"><img class="widget-dropdown-icon-select" src="assets/icon-dropdown.png">
+            <div class="widget-dropdown-options"></div>
+        </div> 
+    `;
+
+    constructor(options, initial, callback) {
+        this.element = createElement(Dropdown.HTML);
+
+        // Setup variables
+        this.options = options;
+        this.elementIconCurrent = this.element.querySelector(
+            ".widget-dropdown-icon-current"
+        );
+        this.elementIconSelect = this.element.querySelector(
+            ".widget-dropdown-icon-select"
+        );
+        this.elementOptions = this.element.querySelector(
+            ".widget-dropdown-options"
+        );
+
+        // Hide dropdown
+        this.elementOptions.style.display = "none";
+
+        // Setup all options
+        for (let option in options) {
+            const optionElement = createElement(`<div>`);
+            const imgElement = createElement(`<img>`);
+            optionElement.appendChild(imgElement);
+            imgElement.src = options[option];
+            this.elementOptions.appendChild(optionElement);
+
+            // Add event listener
+            optionElement.addEventListener("click", (e) => {
+                e.stopPropagation();
+                this.selectOption(option);
+                this.elementOptions.style.display = "none";
+            });
+        }
+
+        // Setup event and listener
+        this.selectEvent = new ListenableEvent();
+
+        // Subscribe callback if provided
+        if (callback != null) this.selectEvent.subscribe(callback);
+
+        // Listener on dropdown to open
+        this.element.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.elementOptions.style.display =
+                this.elementOptions.style.display == "none" ? "flex" : "none";
+        });
+
+        // Select initial
+        this.selectOption(initial);
+    }
+
+    selectOption(option) {
+        this.selected = option;
+        this.elementIconCurrent.src = this.options[option];
+        this.selectEvent.fire(option);
+    }
+}
+
 // ------------------------ Widgets ------------------------
 
 class WidgetContainer {
@@ -218,7 +375,7 @@ class WidgetContainer {
         <div class="widget-container">
             <div class="widget-header">
                 <div class="widget-title"></div>
-                <div class="widget-buttons"></div>
+                <div class="widget-extra"></div>
             </div>
             <div class="widget-content"></div>
         </div>
@@ -231,7 +388,7 @@ class WidgetContainer {
         this.element = createElement(WidgetContainer.HTML);
         this.elementHeader = this.element.querySelector(".widget-header");
         this.elementTitle = this.element.querySelector(".widget-title");
-        this.elementButtons = this.element.querySelector(".widget-buttons");
+        this.elementExtra = this.element.querySelector(".widget-extra");
         this.elementContent = this.element.querySelector(".widget-content");
         if (parent != null) parent.appendChild(this.element);
 
@@ -242,14 +399,8 @@ class WidgetContainer {
         this.setTitle(title);
     }
 
-    addButton(callback, iconPath) {
-        const button = createElement(`<img src="${iconPath}">`);
-        button.addEventListener("click", (e) => {
-            e.stopPropagation();
-            callback();
-        });
-        this.elementButtons.appendChild(button);
-        return button;
+    addExtra(extra) {
+        this.elementExtra.appendChild(extra);
     }
 
     setTitle(title) {
@@ -284,136 +435,71 @@ class InputWidget {
         this.element = createElement(InputWidget.HTML);
         this.elementInput = this.element.querySelector(".user-input");
         this.container.addContent(this.element);
-        this.toggleButton = this.container.addButton(
-            () => this.toggleDelim(),
-            "assets/icon-a1.png"
-        );
 
         // Setup onInput event and listeners
         this.outputEvent = new ListenableEvent();
-        this.elementInput.addEventListener("input", (evt) => {
-            this.messages = parseMessages(evt.target.innerText, this.delim);
-            this.outputEvent.fire(this.messages);
+        this.elementInput.addEventListener("input", (e) => {
+            this.reparseMessages();
         });
+
+        // Setup delim dropdown
+        this.delimDropdown = new Dropdown(
+            {
+                comma: "assets/icon-comma.png",
+                letter: "assets/icon-a.png",
+                dot: "assets/icon-dot.png",
+            },
+            "comma",
+            (delimOption) => this.setDelim(delimOption)
+        );
+        this.container.addExtra(this.delimDropdown.element);
     }
 
-    setContent(input, delim) {
-        // Set delim and button icon
-        this.delim = delim;
-        this.toggleButton.src =
-            this.delim == "," ? "assets/icon-comma.png" : "assets/icon-a1.png";
-
-        // Update text content
+    setContent(input, delimOption) {
         this.elementInput.innerHTML = "";
         input.forEach((line) => {
             this.elementInput.innerHTML += `<div>${line}</div> `;
         });
-
-        // Manually trigger input event
-        this.messages = parseMessages(this.elementInput.innerText, this.delim);
-        this.outputEvent.fire(this.messages);
+        this.setDelim(delimOption);
     }
 
-    toggleDelim() {
-        // Toggle delim and button icon
-        this.delim = this.delim == "," ? "" : ",";
-        this.toggleButton.src =
-            this.delim == "," ? "assets/icon-comma.png" : "assets/icon-a1.png";
+    setDelim(delimOption) {
+        if (delimOption == "letter") this.delim = "";
+        else if (delimOption == "comma") this.delim = ",";
+        else if (delimOption == "dot") this.delim = ".";
+        this.reparseMessages();
+    }
 
-        // Manually trigger input event
+    reparseMessages() {
         this.messages = parseMessages(this.elementInput.innerText, this.delim);
         this.outputEvent.fire(this.messages);
     }
 }
 
-class MessagesContent {
-    static HTML = `
-        <div class="messages use-gaps"></div>
-    `;
-
-    constructor(highlightMode = "Categoric") {
-        // Assert highlightMode
-        if (highlightMode != "Categoric" && highlightMode != "Numeric") {
-            throw new Error("Invalid highlight mode");
-        }
-        this.messages = [];
-        this.highlight = null;
-        this.highlightMode = highlightMode;
-        this.hasGaps = true;
-        this.element = createElement(MessagesContent.HTML);
-    }
-
-    setMessages(messages, highlight = null) {
-        // Create div for each row, span for each cell
-        this.messages = messages;
-        this.cells = [];
-        this.element.innerHTML = "";
-        for (let msg = 0; msg < messages.length; msg++) {
-            const row = createElement(`<div class="message"></div>`);
-            this.cells.push([]);
-            for (let col = 0; col < messages[msg].length; col++) {
-                const cell = createElement(
-                    `<span>${messages[msg][col]}</span>`
-                );
-                row.appendChild(cell);
-                this.cells[msg].push(cell);
-            }
-            this.element.appendChild(row);
-        }
-
-        // Highlight letters
-        this.setHighlight(highlight);
-    }
-
-    setHighlight(highlight) {
-        this.highlight = highlight;
-        if (highlight == null) return;
-        for (let msg = 0; msg < this.messages.length; msg++) {
-            for (let col = 0; col < this.messages[msg].length; col++) {
-                if (this.highlightMode == "Categoric") {
-                    if (highlight[msg][col] > 0) {
-                        this.cells[msg][col].style.backgroundColor =
-                            HIGHLIGHT_COLOURS[
-                                highlight[msg][col] % HIGHLIGHT_COLOUR_COUNT
-                            ];
-                    }
-                    this.cells[msg][col].title = highlight[msg][col];
-                } else if (this.highlightMode == "Numeric") {
-                    this.cells[msg][col].style.backgroundColor =
-                        highlight[msg][col];
-                }
-            }
-        }
-    }
-
-    toggleGaps() {
-        this.element.classList.toggle("use-gaps");
-        this.hasGaps = !this.hasGaps;
-    }
-}
-
-class VisSharedWidget {
+class VisAlignmentWidget {
     constructor(parent, textEvent) {
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Shared Sections");
+        this.container = new WidgetContainer(parent, "Alignments");
         this.messagesContent = new MessagesContent();
         this.container.addContent(this.messagesContent.element);
 
         // Setup toggle gaps button
-        this.toggleGapsButton = this.container.addButton(() => {
-            this.messagesContent.toggleGaps();
-            this.toggleGapsButton.src = this.messagesContent.hasGaps
+        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
+            this.messagesContent.toggleSpacing();
+            this.toggleSpacingButton.element.src = this.messagesContent
+                .useSpacing
                 ? "assets/icon-shrink.png"
                 : "assets/icon-expand.png";
-        }, "assets/icon-shrink.png");
+        });
+        this.container.addExtra(this.toggleSpacingButton.element);
 
         // Setup text event listener
         textEvent.subscribe((messages) => {
             this.messages = messages;
-            this.messagesShared = calculateShared(messages);
+            this.messagesAlignments = calculateAlignments(messages);
             this.messagesContent.setMessages(
                 this.messages,
-                this.messagesShared
+                this.messagesAlignments
             );
         });
     }
@@ -430,51 +516,36 @@ class VisGapsWidget {
         this.gapLimit = gapLimit;
 
         // Setup toggle gaps button
-        this.toggleGapsButton = this.container.addButton(() => {
-            this.messagesContent.toggleGaps();
-            this.toggleGapsButton.src = this.messagesContent.hasGaps
+        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
+            this.messagesContent.toggleSpacing();
+            this.toggleSpacingButton.element.src = this.messagesContent
+                .useSpacing
                 ? "assets/icon-shrink.png"
                 : "assets/icon-expand.png";
-        }, "assets/icon-shrink.png");
+        });
+        this.container.addExtra(this.toggleSpacingButton.element);
 
         // Setup toggle show gaps button
-        this.toggleShowGapsButton = this.container.addButton(() => {
+        this.toggleShowGapsButton = new Button("assets/icon-ruler.png", () => {
             this.showGaps = !this.showGaps;
-            this.toggleShowGapsButton.src = this.showGaps
+            this.toggleShowGapsButton.element.src = this.showGaps
                 ? "assets/icon-eye.png"
                 : "assets/icon-ruler.png";
-
-            // Update message content
-            if (this.showGaps) {
-                this.messagesContent.setMessages(
-                    this.messagesGaps,
-                    this.messagesGaps
-                );
-            } else {
-                this.messagesContent.setMessages(
-                    this.messages,
-                    this.messagesGaps
-                );
-            }
-        }, "assets/icon-ruler.png");
+            this.messagesContent.setMessages(
+                this.showGaps ? this.messagesGaps : this.messages,
+                this.messagesGaps
+            );
+        });
+        this.container.addExtra(this.toggleShowGapsButton.element);
 
         // Setup text event listener
         textEvent.subscribe((messages) => {
             this.messages = messages;
             this.messagesGaps = calculateGaps(messages, this.gapLimit);
-
-            // Update message content
-            if (this.showGaps) {
-                this.messagesContent.setMessages(
-                    this.messagesGaps,
-                    this.messagesGaps
-                );
-            } else {
-                this.messagesContent.setMessages(
-                    this.messages,
-                    this.messagesGaps
-                );
-            }
+            this.messagesContent.setMessages(
+                this.showGaps ? this.messagesGaps : this.messages,
+                this.messagesGaps
+            );
         });
     }
 }
@@ -544,56 +615,62 @@ class VisDeltasWidget {
         this.messagesContent.element.classList.add("small-text");
 
         // Setup toggle gaps button
-        this.toggleGapsButton = this.container.addButton(() => {
-            this.messagesContent.toggleGaps();
-            this.toggleGapsButton.src = this.messagesContent.hasGaps
+        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
+            this.messagesContent.toggleSpacing();
+            this.toggleSpacingButton.element.src = this.messagesContent
+                .useSpacing
                 ? "assets/icon-shrink.png"
                 : "assets/icon-expand.png";
-        }, "assets/icon-shrink.png");
+        });
+        this.container.addExtra(this.toggleSpacingButton.element);
 
         // Setup text event listener
         textEvent.subscribe((messages) => {
             this.messages = messages;
-            this.messagesDeltas = calculateDeltas(messages);
-
-            // Calculate min and max delta
-            let min = Infinity;
-            let max = -Infinity;
-            for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
-                const l = this.messagesDeltas[msg].length;
-                for (let col = 0; col < l; col++) {
-                    min = Math.min(min, this.messagesDeltas[msg][col]);
-                    max = Math.max(max, this.messagesDeltas[msg][col]);
-                }
-            }
-
-            // Calculate highlight values
-            this.messagesDeltasHighlight = [];
-            for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
-                this.messagesDeltasHighlight.push([]);
-                const l = this.messagesDeltas[msg].length;
-                for (let col = 0; col < l; col++) {
-                    const val = this.messagesDeltas[msg][col];
-
-                    if (val < 0) {
-                        const pct = val / min;
-                        this.messagesDeltasHighlight[msg].push(
-                            `hsl(0, 40%, ${90 - 50 * pct}%)`
-                        );
-                    } else {
-                        const pct = val / max;
-                        this.messagesDeltasHighlight[msg].push(
-                            `hsl(214, 40%, ${90 - 50 * pct}%)`
-                        );
-                    }
-                }
-            }
-
-            this.messagesContent.setMessages(
-                this.messagesDeltas,
-                this.messagesDeltasHighlight
-            );
+            this.recalculateDeltas();
         });
+    }
+
+    recalculateDeltas() {
+        this.messagesDeltas = calculateDeltas(this.messages);
+
+        // Calculate min and max delta
+        let min = Infinity;
+        let max = -Infinity;
+        for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
+            const l = this.messagesDeltas[msg].length;
+            for (let col = 0; col < l; col++) {
+                min = Math.min(min, this.messagesDeltas[msg][col]);
+                max = Math.max(max, this.messagesDeltas[msg][col]);
+            }
+        }
+
+        // Calculate highlight values
+        this.messagesDeltasHighlight = [];
+        for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
+            this.messagesDeltasHighlight.push([]);
+            const l = this.messagesDeltas[msg].length;
+            for (let col = 0; col < l; col++) {
+                const val = this.messagesDeltas[msg][col];
+
+                if (val < 0) {
+                    const pct = val / min;
+                    this.messagesDeltasHighlight[msg].push(
+                        `hsl(0, 40%, ${90 - 50 * pct}%)`
+                    );
+                } else {
+                    const pct = val / max;
+                    this.messagesDeltasHighlight[msg].push(
+                        `hsl(214, 40%, ${90 - 50 * pct}%)`
+                    );
+                }
+            }
+        }
+
+        this.messagesContent.setMessages(
+            this.messagesDeltas,
+            this.messagesDeltasHighlight
+        );
     }
 }
 
@@ -604,7 +681,10 @@ class VisDeltasWidget {
     const userInput = new InputWidget(ELEMENT_MAIN, "Input Ciphertext");
 
     // Create a shared section visualisation listening on the user input
-    const visShared = new VisSharedWidget(ELEMENT_MAIN, userInput.outputEvent);
+    const visShared = new VisAlignmentWidget(
+        ELEMENT_MAIN,
+        userInput.outputEvent
+    );
 
     // Create a gap distance visualisation listening on the user input
     const visGaps = new VisGapsWidget(ELEMENT_MAIN, userInput.outputEvent);
