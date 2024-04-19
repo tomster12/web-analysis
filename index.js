@@ -197,12 +197,14 @@ function calculateFrequencies(messages) {
 }
 
 // Deltas: int[][]
-function calculateDeltas(messages) {
+function calculateDeltas(messages, modSize = null) {
     let deltas = [];
     for (let msg = 0; msg < messages.length; msg++) {
         deltas.push([]);
         for (let col = 1; col < messages[msg].length; col++) {
-            deltas[msg].push(messages[msg][col] - messages[msg][col - 1]);
+            let delta = messages[msg][col] - messages[msg][col - 1];
+            if (modSize != null) delta = (delta + modSize) % modSize;
+            deltas[msg].push(delta);
         }
     }
     return deltas;
@@ -513,18 +515,26 @@ class InputWidget {
 }
 
 class BaselineWidget {
-    static ALPHABET_HTML = `
-        <div class="baseline-alphabet"></div>
+    static HTML = `
+        <div class="baseline-container">
+            <div class="baseline-parsed"></div>
+            <hr>
+            <div class="baseline-alphabet-container">
+                <img src="assets/icon-alphabet.png">
+                <div class="baseline-alphabet"></div>
+            </div>
+        </div>
     `;
 
     constructor(parent, inputEvent) {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Parsed Ciphertext");
         this.messagesContent = new MessagesContent();
-        this.container.addContent(this.messagesContent.element);
-        this.container.addContent(createElement("<hr>"));
-        this.elementAlphabet = createElement(BaselineWidget.ALPHABET_HTML);
-        this.container.addContent(this.elementAlphabet);
+        this.element = createElement(BaselineWidget.HTML);
+        this.elementParsed = this.element.querySelector(".baseline-parsed");
+        this.elementAlphabet = this.element.querySelector(".baseline-alphabet");
+        this.elementParsed.appendChild(this.messagesContent.element);
+        this.container.addContent(this.element);
 
         // Setup toggle gaps button
         this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
@@ -699,7 +709,7 @@ class VisGapsWidget {
             () => {
                 this.includeEnd = !this.includeEnd;
                 this.toggleIncludeEndButton.element.src = this.includeEnd
-                    ? "assets/icon-paperclip-off.png"
+                    ? "assets/icon-dot.png"
                     : "assets/icon-paperclip-on.png";
                 this.recalculateGaps();
             }
@@ -784,6 +794,9 @@ class VisFrequencyWidget {
 
 class VisDeltasWidget {
     constructor(parent, inputEvent) {
+        this.mod = false;
+        this.modSize = 0;
+
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Deltas");
         this.messagesContent = new MessagesContent("Numeric");
@@ -799,15 +812,29 @@ class VisDeltasWidget {
         });
         this.container.addExtra(this.toggleSpacingButton.element);
 
+        // Setup toggle mod button
+        this.toggleModButton = new Button("assets/icon-pct.png", () => {
+            this.mod = !this.mod;
+            this.toggleModButton.element.src = this.mod
+                ? "assets/icon-dot.png"
+                : "assets/icon-pct.png";
+            this.recalculateDeltas();
+        });
+        this.container.addExtra(this.toggleModButton.element);
+
         // Setup text event listener
-        inputEvent.subscribe((messages) => {
+        inputEvent.subscribe((messages, alphabet) => {
             this.messages = messages;
+            this.modSize = alphabet.length;
             this.recalculateDeltas();
         });
     }
 
     recalculateDeltas() {
-        this.messagesDeltas = calculateDeltas(this.messages);
+        this.messagesDeltas = calculateDeltas(
+            this.messages,
+            this.mod ? this.modSize : null
+        );
 
         // Calculate min and max delta
         let min = Infinity;
@@ -855,26 +882,23 @@ class VisDeltasWidget {
     // Initialize user input
     const userInput = new InputWidget(ELEMENT_MAIN, "Input Ciphertext");
 
+    // Create a shared section visualisation listening on the user input
+    const visShared = new VisAlignmentWidget(
+        ELEMENT_MAIN,
+        userInput.outputEvent
+    );
+
+    // Create a gap distance visualisation listening on the user input
+    const visGaps = new VisGapsWidget(ELEMENT_MAIN, userInput.outputEvent);
+
+    // Create a frequency visualisation listening on the user input
+    const visFreq = new VisFrequencyWidget(ELEMENT_MAIN, userInput.outputEvent);
+
     // Create a baseline visualisation listening on the user input
     const visBaseline = new BaselineWidget(ELEMENT_MAIN, userInput.outputEvent);
 
     // Create a stats widget listening on the user input
     const statsWidget = new StatsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-
-    // Create a shared section visualisation listening on the user input
-    const visShared = new VisAlignmentWidget(
-        ELEMENT_MAIN,
-        visBaseline.outputEvent
-    );
-
-    // Create a gap distance visualisation listening on the user input
-    const visGaps = new VisGapsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-
-    // Create a frequency visualisation listening on the user input
-    const visFreq = new VisFrequencyWidget(
-        ELEMENT_MAIN,
-        visBaseline.outputEvent
-    );
 
     // Create a delta visualisation listening on the user input
     const visDeltas = new VisDeltasWidget(
