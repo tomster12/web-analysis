@@ -136,7 +136,7 @@ function calculateAlignments(messages) {
 }
 
 // Gaps: int[][]
-function calculateGaps(messages, gapLimit) {
+function calculateGaps(messages, gapLimit, includeEnd = false) {
     let gaps = [];
 
     // For each message
@@ -156,7 +156,8 @@ function calculateGaps(messages, gapLimit) {
                 const diff = col - found[val];
                 if (diff <= gapLimit) gaps[msg][found[val]] = diff;
                 found[val] = col;
-                gaps[msg].push(0);
+                if (includeEnd) gaps[msg].push(diff);
+                else gaps[msg].push(0);
             }
         }
     }
@@ -531,8 +532,9 @@ class VisGapsWidget {
         this.messagesContent = new MessagesContent();
         this.container.addContent(this.messagesContent.element);
         this.gapLimit = gapLimit;
+        this.includeEnd = false;
 
-        // Setup toggle gaps button
+        // Setup toggle spacing button
         this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
             this.messagesContent.toggleSpacing();
             this.toggleSpacingButton.element.src = this.messagesContent
@@ -555,15 +557,36 @@ class VisGapsWidget {
         });
         this.container.addExtra(this.toggleShowGapsButton.element);
 
+        // Setup toggle include end button
+        this.toggleIncludeEndButton = new Button(
+            "assets/icon-paperclip-on.png",
+            () => {
+                this.includeEnd = !this.includeEnd;
+                this.toggleIncludeEndButton.element.src = this.includeEnd
+                    ? "assets/icon-paperclip-off.png"
+                    : "assets/icon-paperclip-on.png";
+                this.recalculateGaps();
+            }
+        );
+        this.container.addExtra(this.toggleIncludeEndButton.element);
+
         // Setup text event listener
         textEvent.subscribe((messages) => {
             this.messages = messages;
-            this.messagesGaps = calculateGaps(messages, this.gapLimit);
-            this.messagesContent.setMessages(
-                this.showGaps ? this.messagesGaps : this.messages,
-                this.messagesGaps
-            );
+            this.recalculateGaps();
         });
+    }
+
+    recalculateGaps() {
+        this.messagesGaps = calculateGaps(
+            this.messages,
+            this.gapLimit,
+            this.includeEnd
+        );
+        this.messagesContent.setMessages(
+            this.showGaps ? this.messagesGaps : this.messages,
+            this.messagesGaps
+        );
     }
 }
 
