@@ -147,6 +147,12 @@ function parseAlphabet(messages) {
         }
     }
     alphabet = Array.from(alphabet);
+
+    // If all elements are numbers sort
+    if (alphabet.every((char) => !isNaN(char))) {
+        alphabet.sort((a, b) => a - b);
+    }
+
     return alphabet;
 }
 
