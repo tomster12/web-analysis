@@ -177,6 +177,18 @@ function calculateFrequencies(messages) {
     return freqs;
 }
 
+// Deltas: int[][]
+function calculateDeltas(messages) {
+    let deltas = [];
+    for (let msg = 0; msg < messages.length; msg++) {
+        deltas.push([]);
+        for (let col = 1; col < messages[msg].length; col++) {
+            deltas[msg].push(messages[msg][col] - messages[msg][col - 1]);
+        }
+    }
+    return deltas;
+}
+
 // ------------------------ Utility ------------------------
 
 function createElement(html) {
@@ -224,14 +236,7 @@ class WidgetContainer {
         if (parent != null) parent.appendChild(this.element);
 
         // Add title close listener
-        this.elementHeader.addEventListener("click", () => {
-            console.log("Header clicked");
-            this.isClosed = !this.isClosed;
-            this.element.classList.toggle("closed");
-            this.elementContent.style.display = this.isClosed
-                ? "none"
-                : "block";
-        });
+        this.elementHeader.addEventListener("click", () => this.toggleClosed());
 
         // Set title
         this.setTitle(title);
@@ -240,7 +245,6 @@ class WidgetContainer {
     addButton(callback, iconPath) {
         const button = createElement(`<img src="${iconPath}">`);
         button.addEventListener("click", (e) => {
-            console.log("Button clicked");
             e.stopPropagation();
             callback();
         });
@@ -254,6 +258,12 @@ class WidgetContainer {
 
     addContent(content) {
         this.elementContent.appendChild(content);
+    }
+
+    toggleClosed() {
+        this.isClosed = !this.isClosed;
+        this.element.classList.toggle("closed");
+        this.elementContent.style.display = this.isClosed ? "none" : "block";
     }
 }
 
@@ -321,7 +331,10 @@ class MessagesContent {
         <div class="messages use-gaps"></div>
     `;
 
-    constructor() {
+    constructor(highlightMode = "Categoric") {
+        this.messages = [];
+        this.highlight = null;
+        this.highlightMode = highlightMode;
         this.hasGaps = true;
         this.element = createElement(MessagesContent.HTML);
     }
@@ -353,13 +366,18 @@ class MessagesContent {
         if (highlight == null) return;
         for (let msg = 0; msg < this.messages.length; msg++) {
             for (let col = 0; col < this.messages[msg].length; col++) {
-                if (highlight[msg][col] > 0) {
+                if (this.highlightMode == "Categoric") {
+                    if (highlight[msg][col] > 0) {
+                        this.cells[msg][col].style.backgroundColor =
+                            HIGHLIGHT_COLOURS[
+                                highlight[msg][col] % HIGHLIGHT_COLOUR_COUNT
+                            ];
+                    }
+                    this.cells[msg][col].title = highlight[msg][col];
+                } else if (this.highlightMode == "Numeric") {
                     this.cells[msg][col].style.backgroundColor =
-                        HIGHLIGHT_COLOURS[
-                            highlight[msg][col] % HIGHLIGHT_COLOUR_COUNT
-                        ];
+                        highlight[msg][col];
                 }
-                this.cells[msg][col].title = highlight[msg][col];
             }
         }
     }
@@ -513,6 +531,68 @@ class VisFrequencyWidget {
     }
 }
 
+class VisDeltasWidget {
+    constructor(parent, textEvent) {
+        // Setup container and put input inside
+        this.container = new WidgetContainer(parent, "Deltas");
+        this.messagesContent = new MessagesContent("Numeric");
+        this.container.addContent(this.messagesContent.element);
+        this.messagesContent.element.classList.add("small-text");
+
+        // Setup toggle gaps button
+        this.toggleGapsButton = this.container.addButton(() => {
+            this.messagesContent.toggleGaps();
+            this.toggleGapsButton.src = this.messagesContent.hasGaps
+                ? "assets/icon-shrink.png"
+                : "assets/icon-expand.png";
+        }, "assets/icon-shrink.png");
+
+        // Setup text event listener
+        textEvent.subscribe((messages) => {
+            this.messages = messages;
+            this.messagesDeltas = calculateDeltas(messages);
+
+            // Calculate min and max delta
+            let min = Infinity;
+            let max = -Infinity;
+            for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
+                const l = this.messagesDeltas[msg].length;
+                for (let col = 0; col < l; col++) {
+                    min = Math.min(min, this.messagesDeltas[msg][col]);
+                    max = Math.max(max, this.messagesDeltas[msg][col]);
+                }
+            }
+
+            // Calculate highlight values
+            this.messagesDeltasHighlight = [];
+            for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
+                this.messagesDeltasHighlight.push([]);
+                const l = this.messagesDeltas[msg].length;
+                for (let col = 0; col < l; col++) {
+                    const val = this.messagesDeltas[msg][col];
+
+                    if (val < 0) {
+                        const pct = val / min;
+                        this.messagesDeltasHighlight[msg].push(
+                            `hsl(0, 40%, ${90 - 50 * pct}%)`
+                        );
+                    } else {
+                        const pct = val / max;
+                        this.messagesDeltasHighlight[msg].push(
+                            `hsl(214, 40%, ${90 - 50 * pct}%)`
+                        );
+                    }
+                }
+            }
+
+            this.messagesContent.setMessages(
+                this.messagesDeltas,
+                this.messagesDeltasHighlight
+            );
+        });
+    }
+}
+
 // ------------------------ Driver ------------------------
 
 (() => {
@@ -527,6 +607,9 @@ class VisFrequencyWidget {
 
     // Create a frequency visualisation listening on the user input
     const visFreq = new VisFrequencyWidget(ELEMENT_MAIN, userInput.outputEvent);
+
+    // Create a delta visualisation listening on the user input
+    const visDeltas = new VisDeltasWidget(ELEMENT_MAIN, userInput.outputEvent);
 
     // Set initial value
     userInput.setContent(EXAMPLE_MESSAGES, ",");

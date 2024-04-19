@@ -143,18 +143,14 @@ hr {
     margin: 1.2rem;
     padding: 0.6rem;
     overflow-x: scroll;
-    font-family: Cousine;
-    font-size: 1.4rem;
     white-space: nowrap;
-}
-
-.messages.use-gaps {
-    padding: 0.3rem;
 }
 
 .messages span {
     display: inline-block;
     background-color: #e3e3e3;
+    font-family: Cousine;
+    font-size: 1.4rem;
     margin: 0rem;
     width: 2.2rem;
     height: 2.2rem;
@@ -162,9 +158,19 @@ hr {
     text-align: center;
 }
 
+.messages.small-text span {
+    font-size: 1.2rem;
+}
+
+.messages.use-gaps {
+    padding: 0.3rem;
+}
+
 .messages.use-gaps span {
     margin: 0.3rem;
 }
+
+/* -------------------- */
 
 .chart-container {
     padding: 1rem;
