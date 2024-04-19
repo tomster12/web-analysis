@@ -489,8 +489,6 @@ class InputWidget {
 
             <div class="input-parsed"></div>
 
-            <hr>
-
             <div class="input-alphabet-container">
                 <img src="assets/icon-alphabet.png">
                 <div class="input-alphabet use-gaps"></div>
