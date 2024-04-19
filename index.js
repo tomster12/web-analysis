@@ -555,10 +555,11 @@ class InputWidget {
 class BaselineWidget {
     static HTML = `
         <div class="baseline-container">
-            <div class="baseline-convert">
+            <div class="baseline-select-container">
                 <p>Convert Mode</p>
+                <div class="baseline-select"></div>
             </div>
-            <div class="baseline-parsed"></div>
+            <div class="baseline-output"></div>
             <hr>
             <div class="baseline-alphabet-container">
                 <img src="assets/icon-alphabet.png">
@@ -573,8 +574,8 @@ class BaselineWidget {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Converted Ciphertext");
         this.element = createElement(BaselineWidget.HTML);
-        this.elementConvert = this.element.querySelector(".baseline-convert");
-        this.elementConvertDropdown = new Dropdown(
+        this.elementSelect = this.element.querySelector(".baseline-select");
+        this.elementSelectDropdown = new Dropdown(
             {
                 None: "assets/icon-identity.png",
                 Int: "assets/icon-123.png",
@@ -585,10 +586,10 @@ class BaselineWidget {
             "None",
             (convertOption) => this.setConvertMode(convertOption)
         );
-        this.elementConvert.appendChild(this.elementConvertDropdown.element);
+        this.elementSelect.appendChild(this.elementSelectDropdown.element);
         this.messagesContent = new MessagesContent();
-        this.elementParsed = this.element.querySelector(".baseline-parsed");
-        this.elementParsed.appendChild(this.messagesContent.element);
+        this.elementOutput = this.element.querySelector(".baseline-output");
+        this.elementOutput.appendChild(this.messagesContent.element);
         this.elementAlphabet = this.element.querySelector(".baseline-alphabet");
         this.container.addContent(this.element);
 

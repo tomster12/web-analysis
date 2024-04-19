@@ -226,22 +226,22 @@ hr {
 
 /* -------------------- */
 
-.baseline-convert {
+.baseline-select-container {
     margin: 1rem;
     display: flex;
     align-items: center;
 }
 
-.baseline-convert p {
+.baseline-select-container p {
     margin-right: 1.4rem;
     font-size: 1.6rem;
 }
 
-.baseline-convert .widget-dropdown {
+.baseline-select .widget-dropdown {
     background-color: #cbcbcb;
 }
 
-.baseline-convert .widget-dropdown:hover {
+.baseline-select .widget-dropdown:hover {
     background-color: #aeaeae;
     cursor: pointer;
 }
