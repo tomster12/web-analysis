@@ -248,6 +248,20 @@ function calculateDeltas(messages, modSize = null) {
     return deltas;
 }
 
+function calculateIoC(messages, alphabetSize) {
+    let freqs = calculateFrequencies(messages);
+
+    let total = 0;
+    let N = 0;
+    for (let char in freqs) {
+        n = freqs[char];
+        total += n * (n - 1);
+        N += n;
+    }
+
+    return total / ((N * (N - 1)) / alphabetSize);
+}
+
 // ------------------------ Utility ------------------------
 
 function createElement(html) {
@@ -659,31 +673,10 @@ class StatsWidget {
         </div>
     `;
 
-    static STATS = [
-        "Alphabet Size",
-        "Total Characters",
-        "Message Count",
-        "Full IoC",
-    ];
-
     constructor(parent, inputEvent) {
         this.container = new WidgetContainer(parent, "Statistics");
         this.element = createElement(StatsWidget.HTML);
         this.container.addContent(this.element);
-
-        // Add stats to labels and values
-        this.statDivs = {};
-        StatsWidget.STATS.forEach((stat) => {
-            const pair = createElement(`<div class="stats-pair"></div>`);
-            const label = createElement(
-                `<div class="stats-label">${stat}</div>`
-            );
-            const value = createElement(`<div class="stats-value">0</div>`);
-            pair.appendChild(label);
-            pair.appendChild(value);
-            this.element.appendChild(pair);
-            this.statDivs[stat] = value;
-        });
 
         // Setup text event listener
         inputEvent.subscribe((messages, alphabet) => {
@@ -694,18 +687,44 @@ class StatsWidget {
     }
 
     recalculateStats() {
-        // Update alphabet
-        this.statDivs["Alphabet Size"].textContent = this.alphabet.length;
-
-        // Update total characters
+        // Caclualte stats
+        this.calculatedStats = {};
+        this.calculatedStats["Alphabet Size"] = this.alphabet.length;
         let totalChars = 0;
         for (let msg = 0; msg < this.messages.length; msg++) {
             totalChars += this.messages[msg].length;
         }
-        this.statDivs["Total Characters"].textContent = totalChars;
+        this.calculatedStats["Total Characters"] = totalChars;
+        this.calculatedStats["Message Count"] = this.messages.length;
 
-        // Update message count
-        this.statDivs["Message Count"].textContent = this.messages.length;
+        // Calculate IoC for all + each message
+        this.calculatedStats["IoC"] = calculateIoC(
+            this.messages,
+            this.alphabet.length
+        );
+        for (let msg = 0; msg < this.messages.length; msg++) {
+            this.calculatedStats[`IoC ${msg}`] = calculateIoC(
+                [this.messages[msg]],
+                this.alphabet.length
+            );
+        }
+
+        // Turn stats into elements
+        this.element.innerHTML = "";
+        for (let stat in this.calculatedStats) {
+            let val = this.calculatedStats[stat];
+            val = Math.round(val * 10000) / 10000;
+            const pair = createElement(`<div class="stats-pair"></div>`);
+            const label = createElement(
+                `<div class="stats-label">${stat}</div>`
+            );
+            const value = createElement(
+                `<div class="stats-value">${val}</div>`
+            );
+            pair.appendChild(label);
+            pair.appendChild(value);
+            this.element.appendChild(pair);
+        }
     }
 }
 
