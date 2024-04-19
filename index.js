@@ -106,6 +106,38 @@ function parseMessages(text, delim = ",") {
     return lines;
 }
 
+// Messages: char[][]
+function convertMessages(messages, convertOption) {
+    let converted = [];
+
+    if (convertOption == "Unique") {
+        var uniqueID = 0;
+        var uniqueMap = {};
+    }
+
+    // Convert messages based on convertOption
+    for (let msg = 0; msg < messages.length; msg++) {
+        converted.push([]);
+        for (let col = 0; col < messages[msg].length; col++) {
+            const val = messages[msg][col];
+            if (convertOption == "Int") {
+                converted[msg].push(parseInt(val));
+            } else if (convertOption == "Unique") {
+                if (uniqueMap[val] == null) uniqueMap[val] = uniqueID++;
+                converted[msg].push(uniqueMap[val]);
+            } else if (convertOption == "ToAscii") {
+                converted[msg].push(String.fromCharCode(parseInt(val) + 32));
+            } else if (convertOption == "FromAscii") {
+                converted[msg].push(val.charCodeAt(0) - 32);
+            } else {
+                converted[msg].push(val);
+            }
+        }
+    }
+
+    return converted;
+}
+
 // Alphabet: Set<char>
 function parseAlphabet(messages) {
     let alphabet = new Set();
@@ -517,6 +549,9 @@ class InputWidget {
 class BaselineWidget {
     static HTML = `
         <div class="baseline-container">
+            <div class="baseline-convert">
+                <p>Parse Mode</p>
+            </div>
             <div class="baseline-parsed"></div>
             <hr>
             <div class="baseline-alphabet-container">
@@ -527,13 +562,28 @@ class BaselineWidget {
     `;
 
     constructor(parent, inputEvent) {
+        this.convertOption = "None";
+
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Parsed Ciphertext");
-        this.messagesContent = new MessagesContent();
         this.element = createElement(BaselineWidget.HTML);
+        this.elementConvert = this.element.querySelector(".baseline-convert");
+        this.elementConvertDropdown = new Dropdown(
+            {
+                None: "assets/icon-identity.png",
+                Int: "assets/icon-123.png",
+                Unique: "assets/icon-abacus.png",
+                ToAscii: "assets/icon-to-ascii.png",
+                FromAscii: "assets/icon-from-ascii.png",
+            },
+            "None",
+            (convertOption) => this.setConvertMode(convertOption)
+        );
+        this.elementConvert.appendChild(this.elementConvertDropdown.element);
+        this.messagesContent = new MessagesContent();
         this.elementParsed = this.element.querySelector(".baseline-parsed");
-        this.elementAlphabet = this.element.querySelector(".baseline-alphabet");
         this.elementParsed.appendChild(this.messagesContent.element);
+        this.elementAlphabet = this.element.querySelector(".baseline-alphabet");
         this.container.addContent(this.element);
 
         // Setup toggle gaps button
@@ -557,8 +607,20 @@ class BaselineWidget {
         });
     }
 
+    setConvertMode(convertOption) {
+        this.convertOption = convertOption;
+        if (this.inputMessages != null) {
+            this.processMessages();
+            this.messagesContent.setMessages(this.outputMessages);
+        }
+    }
+
     processMessages() {
-        this.outputMessages = this.inputMessages;
+        // Convert input to output messages
+        this.outputMessages = convertMessages(
+            this.inputMessages,
+            this.convertOption
+        );
 
         // Parse alphabet and add spans to element
         this.alphabet = parseAlphabet(this.outputMessages);
@@ -882,23 +944,26 @@ class VisDeltasWidget {
     // Initialize user input
     const userInput = new InputWidget(ELEMENT_MAIN, "Input Ciphertext");
 
-    // Create a shared section visualisation listening on the user input
-    const visShared = new VisAlignmentWidget(
-        ELEMENT_MAIN,
-        userInput.outputEvent
-    );
-
-    // Create a gap distance visualisation listening on the user input
-    const visGaps = new VisGapsWidget(ELEMENT_MAIN, userInput.outputEvent);
-
-    // Create a frequency visualisation listening on the user input
-    const visFreq = new VisFrequencyWidget(ELEMENT_MAIN, userInput.outputEvent);
-
     // Create a baseline visualisation listening on the user input
     const visBaseline = new BaselineWidget(ELEMENT_MAIN, userInput.outputEvent);
 
     // Create a stats widget listening on the user input
     const statsWidget = new StatsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
+
+    // Create a shared section visualisation listening on the user input
+    const visShared = new VisAlignmentWidget(
+        ELEMENT_MAIN,
+        visBaseline.outputEvent
+    );
+
+    // Create a gap distance visualisation listening on the user input
+    const visGaps = new VisGapsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
+
+    // Create a frequency visualisation listening on the user input
+    const visFreq = new VisFrequencyWidget(
+        ELEMENT_MAIN,
+        visBaseline.outputEvent
+    );
 
     // Create a delta visualisation listening on the user input
     const visDeltas = new VisDeltasWidget(
