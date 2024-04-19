@@ -100,6 +100,18 @@ function parseMessages(text, delim = ",") {
     return lines;
 }
 
+// Alphabet: Set<char>
+function parseAlphabet(messages) {
+    let alphabet = new Set();
+    for (let msg = 0; msg < messages.length; msg++) {
+        for (let col = 0; col < messages[msg].length; col++) {
+            alphabet.add(messages[msg][col]);
+        }
+    }
+    alphabet = Array.from(alphabet);
+    return alphabet;
+}
+
 // Shared: int[][]
 function calculateAlignments(messages) {
     const maxLength = Math.max(...messages.map((line) => line.length));
@@ -494,8 +506,126 @@ class InputWidget {
     }
 }
 
+class BaselineWidget {
+    static ALPHABET_HTML = `
+        <div class="baseline-alphabet"></div>
+    `;
+
+    constructor(parent, inputEvent) {
+        // Setup container and put input inside
+        this.container = new WidgetContainer(parent, "Parsed Ciphertext");
+        this.messagesContent = new MessagesContent();
+        this.container.addContent(this.messagesContent.element);
+        this.container.addContent(createElement("<hr>"));
+        this.elementAlphabet = createElement(BaselineWidget.ALPHABET_HTML);
+        this.container.addContent(this.elementAlphabet);
+
+        // Setup toggle gaps button
+        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
+            this.messagesContent.toggleSpacing();
+            this.toggleSpacingButton.element.src = this.messagesContent
+                .useSpacing
+                ? "assets/icon-shrink.png"
+                : "assets/icon-expand.png";
+        });
+        this.container.addExtra(this.toggleSpacingButton.element);
+
+        // Setup output event
+        this.outputEvent = new ListenableEvent();
+
+        // Setup text event listener
+        inputEvent.subscribe((messages) => {
+            this.inputMessages = messages;
+            this.processMessages();
+            this.messagesContent.setMessages(this.outputMessages);
+        });
+    }
+
+    processMessages() {
+        this.outputMessages = this.inputMessages;
+
+        // Parse alphabet and add spans to element
+        this.alphabet = parseAlphabet(this.outputMessages);
+        this.elementAlphabet.innerHTML = "";
+        this.alphabet.forEach((char) => {
+            const span = createElement(`<span>${char}</span>`);
+            this.elementAlphabet.appendChild(span);
+        });
+
+        // Find fixed width based on maximum character count
+        let maxWidth = 0;
+        for (let l = 0; l < this.alphabet.length; l++) {
+            maxWidth = Math.max(maxWidth, this.alphabet[l].toString().length);
+        }
+
+        // Set max width of span with this.element style
+        this.elementAlphabet.style.setProperty(
+            "--max-width",
+            `${maxWidth * 1.4 * 0.85}rem`
+        );
+
+        this.outputEvent.fire(this.outputMessages, this.alphabet);
+    }
+}
+
+class StatsWidget {
+    static HTML = `
+        <div class="stats-container">
+        </div>
+    `;
+
+    static STATS = [
+        "Alphabet Size",
+        "Total Characters",
+        "Message Count",
+        "Full IoC",
+    ];
+
+    constructor(parent, inputEvent) {
+        this.container = new WidgetContainer(parent, "Statistics");
+        this.element = createElement(StatsWidget.HTML);
+        this.container.addContent(this.element);
+
+        // Add stats to labels and values
+        this.statDivs = {};
+        StatsWidget.STATS.forEach((stat) => {
+            const pair = createElement(`<div class="stats-pair"></div>`);
+            const label = createElement(
+                `<div class="stats-label">${stat}</div>`
+            );
+            const value = createElement(`<div class="stats-value">0</div>`);
+            pair.appendChild(label);
+            pair.appendChild(value);
+            this.element.appendChild(pair);
+            this.statDivs[stat] = value;
+        });
+
+        // Setup text event listener
+        inputEvent.subscribe((messages, alphabet) => {
+            this.messages = messages;
+            this.alphabet = alphabet;
+            this.recalculateStats();
+        });
+    }
+
+    recalculateStats() {
+        // Update alphabet
+        this.statDivs["Alphabet Size"].textContent = this.alphabet.length;
+
+        // Update total characters
+        let totalChars = 0;
+        for (let msg = 0; msg < this.messages.length; msg++) {
+            totalChars += this.messages[msg].length;
+        }
+        this.statDivs["Total Characters"].textContent = totalChars;
+
+        // Update message count
+        this.statDivs["Message Count"].textContent = this.messages.length;
+    }
+}
+
 class VisAlignmentWidget {
-    constructor(parent, textEvent) {
+    constructor(parent, inputEvent) {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Alignments");
         this.messagesContent = new MessagesContent();
@@ -512,7 +642,7 @@ class VisAlignmentWidget {
         this.container.addExtra(this.toggleSpacingButton.element);
 
         // Setup text event listener
-        textEvent.subscribe((messages) => {
+        inputEvent.subscribe((messages) => {
             this.messages = messages;
             this.messagesAlignments = calculateAlignments(messages);
             this.messagesContent.setMessages(
@@ -524,7 +654,7 @@ class VisAlignmentWidget {
 }
 
 class VisGapsWidget {
-    constructor(parent, textEvent, gapLimit = 15) {
+    constructor(parent, inputEvent, gapLimit = 15) {
         this.showGaps = false;
 
         // Setup container and put input inside
@@ -571,7 +701,7 @@ class VisGapsWidget {
         this.container.addExtra(this.toggleIncludeEndButton.element);
 
         // Setup text event listener
-        textEvent.subscribe((messages) => {
+        inputEvent.subscribe((messages) => {
             this.messages = messages;
             this.recalculateGaps();
         });
@@ -597,7 +727,7 @@ class VisFrequencyWidget {
         </div>
     `;
 
-    constructor(parent, textEvent) {
+    constructor(parent, inputEvent) {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Letter Frequencies");
         this.element = createElement(VisFrequencyWidget.HTML);
@@ -605,7 +735,7 @@ class VisFrequencyWidget {
         this.container.addContent(this.element);
 
         // Setup text event listener
-        textEvent.subscribe((messages) => {
+        inputEvent.subscribe((messages) => {
             this.messages = messages;
             this.messagesFreq = calculateFrequencies(messages);
             this.updateChart();
@@ -647,7 +777,7 @@ class VisFrequencyWidget {
 }
 
 class VisDeltasWidget {
-    constructor(parent, textEvent) {
+    constructor(parent, inputEvent) {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Deltas");
         this.messagesContent = new MessagesContent("Numeric");
@@ -664,7 +794,7 @@ class VisDeltasWidget {
         this.container.addExtra(this.toggleSpacingButton.element);
 
         // Setup text event listener
-        textEvent.subscribe((messages) => {
+        inputEvent.subscribe((messages) => {
             this.messages = messages;
             this.recalculateDeltas();
         });
@@ -719,20 +849,32 @@ class VisDeltasWidget {
     // Initialize user input
     const userInput = new InputWidget(ELEMENT_MAIN, "Input Ciphertext");
 
+    // Create a baseline visualisation listening on the user input
+    const visBaseline = new BaselineWidget(ELEMENT_MAIN, userInput.outputEvent);
+
+    // Create a stats widget listening on the user input
+    const statsWidget = new StatsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
+
     // Create a shared section visualisation listening on the user input
     const visShared = new VisAlignmentWidget(
         ELEMENT_MAIN,
-        userInput.outputEvent
+        visBaseline.outputEvent
     );
 
     // Create a gap distance visualisation listening on the user input
-    const visGaps = new VisGapsWidget(ELEMENT_MAIN, userInput.outputEvent);
+    const visGaps = new VisGapsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
 
     // Create a frequency visualisation listening on the user input
-    const visFreq = new VisFrequencyWidget(ELEMENT_MAIN, userInput.outputEvent);
+    const visFreq = new VisFrequencyWidget(
+        ELEMENT_MAIN,
+        visBaseline.outputEvent
+    );
 
     // Create a delta visualisation listening on the user input
-    const visDeltas = new VisDeltasWidget(ELEMENT_MAIN, userInput.outputEvent);
+    const visDeltas = new VisDeltasWidget(
+        ELEMENT_MAIN,
+        visBaseline.outputEvent
+    );
 
     // Set initial value
     userInput.setContent(EXAMPLE_MESSAGES, ",");

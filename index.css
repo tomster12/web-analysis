@@ -196,19 +196,19 @@ hr {
     padding: 0.6rem;
     overflow-x: scroll;
     white-space: nowrap;
+    font-size: 1.4rem;
+    font-family: Cousine;
 }
 
 .messages span {
     display: inline-block;
     background-color: #e3e3e3;
-    font-family: Cousine;
     margin: 0rem;
+    width: var(--max-width);
     height: 2.2rem;
     line-height: 2.2rem;
     text-align: center;
     padding: 0.2rem;
-    font-size: 1.4rem;
-    width: var(--max-width);
 }
 
 .messages.use-gaps {
@@ -221,10 +221,59 @@ hr {
 
 /* -------------------- */
 
+.baseline-alphabet {
+    margin: 1.2rem;
+    padding: 0.3rem;
+    background-color: #ffffff;
+    overflow-x: scroll;
+    white-space: nowrap;
+    font-size: 1.4rem;
+    font-family: Cousine;
+}
+
+.baseline-alphabet span {
+    display: inline-block;
+    background-color: #e3e3e3;
+    width: var(--max-width);
+    margin: 0.3rem;
+    height: 2.2rem;
+    line-height: 2.2rem;
+    text-align: center;
+}
+
+/* -------------------- */
+
 .chart-container {
     padding: 1rem;
 }
 
 .chart-container canvas {
     height: 35rem;
+}
+
+/* -------------------- */
+
+.stats-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-width: 68rem;
+    padding: 1rem 2rem;
+}
+
+.stats-pair {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    margin: 1rem;
+    font-size: 1.6rem;
+}
+
+.stats-label {
+    font-weight: bold;
+    width: 22rem;
+}
+
+.stats-value {
+    width: 8rem;
 }
