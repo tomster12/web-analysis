@@ -332,6 +332,10 @@ class MessagesContent {
     `;
 
     constructor(highlightMode = "Categoric") {
+        // Assert highlightMode
+        if (highlightMode != "Categoric" && highlightMode != "Numeric") {
+            throw new Error("Invalid highlight mode");
+        }
         this.messages = [];
         this.highlight = null;
         this.highlightMode = highlightMode;

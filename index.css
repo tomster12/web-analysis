@@ -129,6 +129,7 @@ hr {
     padding: 0.6rem;
     border-radius: 0.2rem;
     overflow: hidden;
+    overflow-x: scroll;
     font-size: 1.5rem;
 }
 
