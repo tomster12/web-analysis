@@ -102,7 +102,15 @@ hr {
     cursor: pointer;
 }
 
-.widget-dropdown {
+.widget-content {
+    background-color: #e2e2e2;
+    padding: 0.01px;
+    min-height: 1rem;
+}
+
+/* -------------------- */
+
+.dropdown {
     position: relative;
     padding: 0.3rem;
     display: flex;
@@ -113,22 +121,22 @@ hr {
     border-radius: 0.5rem;
 }
 
-.widget-dropdown:hover {
+.dropdown:hover {
     background-color: #cacaca;
     cursor: pointer;
 }
 
-.widget-dropdown-icon-current {
+.dropdown-icon-current {
     height: 1.9rem;
     padding: 0.3rem;
     padding-right: 0.3rem;
 }
 
-.widget-dropdown-icon-select {
+.dropdown-icon-select {
     height: 1rem;
 }
 
-.widget-dropdown-options {
+.dropdown-options {
     position: absolute;
     left: 0px;
     top: 100%;
@@ -143,56 +151,21 @@ hr {
     overflow: hidden;
 }
 
-.widget-dropdown-options div {
+.dropdown-options div {
     flex-grow: 1;
     padding: 0.5rem;
 }
 
-.widget-dropdown-options div:hover {
+.dropdown-options div:hover {
     background-color: #cacaca;
     cursor: pointer;
 }
 
-.widget-dropdown-options img {
+.dropdown-options img {
     height: 2rem;
 }
 
-.widget-content {
-    background-color: #e2e2e2;
-    padding: 0.01px;
-    min-height: 1rem;
-}
-
-/* -------------------- */
-
-.user-input-wrapper {
-    display: flex;
-    flex-direction: row;
-    padding: 1.2rem;
-    overflow: hidden;
-}
-
-.user-input-icon {
-    height: 2rem;
-    margin-top: 0.6rem;
-    margin-right: 1rem;
-}
-
-.user-input {
-    flex-grow: 1;
-    background-color: #ffffff;
-    padding: 0.6rem;
-    border-radius: 0.2rem;
-    overflow: hidden;
-    overflow-x: scroll;
-    font-size: 1.5rem;
-}
-
-.user-input:focus {
-    outline: none;
-}
-
-/* -------------------- */
+/* ------------------- */
 
 .messages {
     background-color: #ffffff;
@@ -226,44 +199,71 @@ hr {
 
 /* -------------------- */
 
-.baseline-select-container {
+.input-field-container {
+    display: flex;
+    flex-direction: row;
+    padding: 1.2rem;
+    overflow: hidden;
+}
+
+.input-field-icon {
+    height: 2rem;
+    margin-top: 0.6rem;
+    margin-right: 1rem;
+}
+
+.input-field {
+    flex-grow: 1;
+    background-color: #ffffff;
+    padding: 0.6rem;
+    border-radius: 0.2rem;
+    overflow: hidden;
+    overflow-x: scroll;
+    font-size: 1.5rem;
+}
+
+.input-field:focus {
+    outline: none;
+}
+
+.input-options-container {
     margin: 1rem;
     display: flex;
     align-items: center;
 }
 
-.baseline-select-container p {
+.input-options-container p {
     margin-right: 1.4rem;
     font-size: 1.6rem;
 }
-.baseline-select-delimeter,
-.baseline-select-convert {
+.input-options-delimeter,
+.input-options-convert {
     margin-right: 1.4rem;
 }
 
-.baseline-select-container .widget-dropdown {
+.input-options-container .dropdown {
     background-color: #cbcbcb;
 }
 
-.baseline-select-container .widget-dropdown:hover {
+.input-options-container .dropdown:hover {
     background-color: #aeaeae;
     cursor: pointer;
 }
 
-.baseline-alphabet-container {
+.input-alphabet-container {
     display: flex;
     flex-direction: row;
     padding: 1.2rem;
 }
 
-.baseline-alphabet-container img {
+.input-alphabet-container img {
     position: relative;
     height: 2.5rem;
     margin: 1.2rem;
     margin-left: 0;
 }
 
-.baseline-alphabet {
+.input-alphabet {
     padding: 0.3rem;
     background-color: #ffffff;
     overflow-x: scroll;
@@ -272,7 +272,7 @@ hr {
     font-family: Cousine;
 }
 
-.baseline-alphabet span {
+.input-alphabet span {
     display: inline-block;
     background-color: #e3e3e3;
     width: var(--max-width);

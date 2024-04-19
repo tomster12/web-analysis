@@ -370,9 +370,9 @@ class Button {
 
 class Dropdown {
     static HTML = `
-        <div class="widget-dropdown">
-            <img class="widget-dropdown-icon-current"><img class="widget-dropdown-icon-select" src="assets/icon-dropdown.png">
-            <div class="widget-dropdown-options"></div>
+        <div class="dropdown">
+            <img class="dropdown-icon-current"><img class="dropdown-icon-select" src="assets/icon-dropdown.png">
+            <div class="dropdown-options"></div>
         </div> 
     `;
 
@@ -381,9 +381,9 @@ class Dropdown {
 
         // Setup variables
         this.options = options;
-        this.elementIconCurrent = this.element.querySelector(".widget-dropdown-icon-current");
-        this.elementIconSelect = this.element.querySelector(".widget-dropdown-icon-select");
-        this.elementOptions = this.element.querySelector(".widget-dropdown-options");
+        this.elementIconCurrent = this.element.querySelector(".dropdown-icon-current");
+        this.elementIconSelect = this.element.querySelector(".dropdown-icon-select");
+        this.elementOptions = this.element.querySelector(".dropdown-options");
 
         // Hide dropdown
         this.elementOptions.style.display = "none";
@@ -479,53 +479,27 @@ class WidgetContainer {
 
 class InputWidget {
     static HTML = `
-        <div class="user-input-wrapper">
-            <img class="user-input-icon" src="assets/icon-input.png">
-            <div class="user-input" contentEditable="true">
-        </div>
-    `;
+        <div class="input-container">
 
-    constructor(parent, title = "Input") {
-        this.messages = [];
+            <div class="input-field-container">
+                <img class="input-field-icon" src="assets/icon-input.png">
+                <div class="input-field" contentEditable="true"></div>
+            </div>
 
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, title);
-        this.element = createElement(InputWidget.HTML);
-        this.elementInput = this.element.querySelector(".user-input");
-        this.container.addContent(this.element);
-
-        // Setup onInput event and listeners
-        this.outputEvent = new ListenableEvent();
-        this.elementInput.addEventListener("input", (e) => {
-            this.messages = this.elementInput.innerText;
-            this.outputEvent.fire(this.messages);
-        });
-    }
-
-    setContent(input) {
-        this.elementInput.innerHTML = "";
-        input.forEach((line) => {
-            this.elementInput.innerHTML += `<div>${line}</div> `;
-        });
-        this.messages = this.elementInput.innerText;
-        this.outputEvent.fire(this.messages);
-    }
-}
-
-class BaselineWidget {
-    static HTML = `
-        <div class="baseline-container">
-            <div class="baseline-select-container">
+            <div class="input-options-container">
                 <p>Delimeter</p>
-                <div class="baseline-select-delimeter"></div>
+                <div class="input-options-delimeter"></div>
                 <p>Convert Mode</p>
-                <div class="baseline-select-convert"></div>
-                </div>
-            <div class="baseline-output"></div>
+                <div class="input-options-convert"></div>
+            </div>
+
+            <div class="input-parsed"></div>
+
             <hr>
-            <div class="baseline-alphabet-container">
+
+            <div class="input-alphabet-container">
                 <img src="assets/icon-alphabet.png">
-                <div class="baseline-alphabet"></div>
+                <div class="input-alphabet"></div>
             </div>
         </div>
     `;
@@ -534,11 +508,18 @@ class BaselineWidget {
         this.delimeter = "comma";
         this.convertOption = "None";
 
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Parsed Ciphertext");
-        this.element = createElement(BaselineWidget.HTML);
-        this.elementSelectDelimeter = this.element.querySelector(".baseline-select-delimeter");
-        this.elementSelectDelimeterDropdown = new Dropdown(
+        // Setup full container and grab elements
+        this.container = new WidgetContainer(parent, "Input Ciphertext");
+        this.element = createElement(InputWidget.HTML);
+        this.elementInput = this.element.querySelector(".input-field");
+        this.elementOptionsDelimeter = this.element.querySelector(".input-options-delimeter");
+        this.elementOptionsConvert = this.element.querySelector(".input-options-convert");
+        this.elementParsed = this.element.querySelector(".input-parsed");
+        this.elementAlphabet = this.element.querySelector(".input-alphabet");
+        this.parsedContent = new MessagesContent();
+
+        // Create dropdowns
+        this.delimeterDropdown = new Dropdown(
             {
                 comma: "assets/icon-comma.png",
                 dot: "assets/icon-dot.png",
@@ -547,12 +528,10 @@ class BaselineWidget {
             "comma",
             (delimeter) => {
                 this.delimeter = delimeter;
-                if (this.inputMessages != null) this.processMessages();
+                this.processMessages();
             }
         );
-        this.elementSelectDelimeter.appendChild(this.elementSelectDelimeterDropdown.element);
-        this.elementSelectConvert = this.element.querySelector(".baseline-select-convert");
-        this.elementSelectConvertDropdown = new Dropdown(
+        this.convertDropdown = new Dropdown(
             {
                 None: "assets/icon-identity.png",
                 Int: "assets/icon-123.png",
@@ -563,57 +542,63 @@ class BaselineWidget {
             "None",
             (convertOption) => {
                 this.convertOption = convertOption;
-                if (this.inputMessages != null) this.processMessages();
+                this.processMessages();
             }
         );
-        this.elementSelectConvert.appendChild(this.elementSelectConvertDropdown.element);
-        this.messagesContent = new MessagesContent();
-        this.elementOutput = this.element.querySelector(".baseline-output");
-        this.elementOutput.appendChild(this.messagesContent.element);
-        this.elementAlphabet = this.element.querySelector(".baseline-alphabet");
+
+        // Add elements to container
+        this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
+        this.elementOptionsConvert.appendChild(this.convertDropdown.element);
+        this.elementParsed.appendChild(this.parsedContent.element);
         this.container.addContent(this.element);
 
         // Setup toggle gaps button
         this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.messagesContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messagesContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
+            this.parsedContent.toggleSpacing();
+            this.toggleSpacingButton.element.src = this.parsedContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
         this.container.addExtra(this.toggleSpacingButton.element);
 
-        // Setup output event
+        // Setup input listeners
         this.outputEvent = new ListenableEvent();
-
-        // Setup text event listener
-        inputEvent.subscribe((messages) => {
-            this.inputMessages = messages;
+        this.elementInput.addEventListener("input", (e) => {
+            this.messages = this.elementInput.innerText;
             this.processMessages();
         });
     }
 
-    processMessages() {
-        // Convert input to output messages
-        let delim = this.delimeter == "comma" ? "," : this.delimeter == "dot" ? "." : "";
-        let messages = parseMessages(this.inputMessages, delim);
-        this.outputMessages = convertMessages(messages, this.convertOption);
+    setContent(input) {
+        this.elementInput.innerHTML = "";
+        input.forEach((line) => {
+            this.elementInput.innerHTML += `<div>${line}</div> `;
+        });
+        this.messages = this.elementInput.innerText;
+        this.processMessages();
+    }
 
-        // Parse alphabet and add spans to element
+    processMessages() {
+        if (this.messages == null || this.messages == []) return;
+
+        // Parse messages with delimeter, convert based on option
+        let delim = this.delimeter == "comma" ? "," : this.delimeter == "dot" ? "." : "";
+        let parsedMessages = parseMessages(this.messages, delim);
+        this.outputMessages = convertMessages(parsedMessages, this.convertOption);
+
+        // Parse alphabet and update alphabet output
         this.alphabet = parseAlphabet(this.outputMessages);
         this.elementAlphabet.innerHTML = "";
         this.alphabet.forEach((char) => {
             const span = createElement(`<span>${char}</span>`);
             this.elementAlphabet.appendChild(span);
         });
-
-        // Find fixed width based on maximum character count
         let maxWidth = 0;
         for (let l = 0; l < this.alphabet.length; l++) {
             maxWidth = Math.max(maxWidth, this.alphabet[l].toString().length);
         }
-
-        // Set max width of span with this.element style
         this.elementAlphabet.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
 
-        this.messagesContent.setMessages(this.outputMessages);
+        // Set parsed messages and fire event
+        this.parsedContent.setMessages(this.outputMessages);
         this.outputEvent.fire(this.outputMessages, this.alphabet);
     }
 }
@@ -670,7 +655,7 @@ class StatsWidget {
     }
 }
 
-class VisAlignmentWidget {
+class AlignmentWidget {
     constructor(parent, inputEvent) {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Alignments");
@@ -693,7 +678,7 @@ class VisAlignmentWidget {
     }
 }
 
-class VisGapsWidget {
+class GapsWidget {
     constructor(parent, inputEvent, gapLimit = 15) {
         this.showGaps = false;
 
@@ -751,7 +736,7 @@ class VisGapsWidget {
     }
 }
 
-class VisFrequencyWidget {
+class FrequencyWidget {
     static HTML = `
         <div class='chart-container'>
             <canvas id="freq-chart"></canvas>
@@ -761,7 +746,7 @@ class VisFrequencyWidget {
     constructor(parent, inputEvent, sorted = false) {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Letter Frequencies" + (sorted ? " (Sorted)" : ""));
-        this.element = createElement(VisFrequencyWidget.HTML);
+        this.element = createElement(FrequencyWidget.HTML);
         this.elementChart = this.element.querySelector("#freq-chart");
         this.container.addContent(this.element);
         this.sorted = sorted;
@@ -809,7 +794,7 @@ class VisFrequencyWidget {
     }
 }
 
-class VisDeltasWidget {
+class DeltasWidget {
     constructor(parent, inputEvent) {
         this.mod = false;
         this.modSize = 0;
@@ -882,15 +867,14 @@ class VisDeltasWidget {
 
 (() => {
     // Initialize user input
-    const userInput = new InputWidget(ELEMENT_MAIN, "Input Ciphertext");
-    const visBaseline = new BaselineWidget(ELEMENT_MAIN, userInput.outputEvent);
-    const statsWidget = new StatsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-    const visShared = new VisAlignmentWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-    const visGaps = new VisGapsWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-    const visFreq = new VisFrequencyWidget(ELEMENT_MAIN, visBaseline.outputEvent);
-    const visFreqSorted = new VisFrequencyWidget(ELEMENT_MAIN, visBaseline.outputEvent, true);
-    const visDeltas = new VisDeltasWidget(ELEMENT_MAIN, visBaseline.outputEvent);
+    const widgetInput = new InputWidget(ELEMENT_MAIN);
+    const widgetStats = new StatsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    const widgetShared = new AlignmentWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    const widgetGaps = new GapsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    const widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    const widgetFreqSorted = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent, true);
+    const widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
 
     // Set initial value
-    userInput.setContent(EXAMPLE_MESSAGES, "comma");
+    widgetInput.setContent(EXAMPLE_MESSAGES, "comma");
 })();
