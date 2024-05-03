@@ -214,6 +214,11 @@ hr {
     margin: 0.3rem;
 }
 
+.messages .message span.hovered {
+    border: 1px solid #272727;
+    line-height: calc(2.2rem - 2px);
+}
+
 /* -------------------- */
 
 .input-field-container {

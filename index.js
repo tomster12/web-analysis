@@ -302,6 +302,8 @@ class MessagesContent {
             this.cells.push([]);
             for (let col = 0; col < messages[msg].length; col++) {
                 const cell = createElement(`<span>${messages[msg][col]}</span>`);
+                cell.addEventListener("mouseenter", () => this.hoverValue(messages[msg][col]));
+                cell.addEventListener("mouseleave", () => this.unhoverValue(messages[msg][col]));
                 row.appendChild(cell);
                 this.cells[msg].push(cell);
             }
@@ -342,6 +344,28 @@ class MessagesContent {
                 } else if (this.highlightMode == "Numeric") {
                     // Numeric: Set highlight as colour
                     this.cells[msg][col].style.backgroundColor = highlight[msg][col];
+                }
+            }
+        }
+    }
+
+    hoverValue(val) {
+        this.element.classList.add("cell-hovered");
+        for (let msg = 0; msg < this.messages.length; msg++) {
+            for (let col = 0; col < this.messages[msg].length; col++) {
+                if (this.messages[msg][col] == val) {
+                    this.cells[msg][col].classList.add("hovered");
+                }
+            }
+        }
+    }
+
+    unhoverValue(val) {
+        this.element.classList.remove("cell-hovered");
+        for (let msg = 0; msg < this.messages.length; msg++) {
+            for (let col = 0; col < this.messages[msg].length; col++) {
+                if (this.messages[msg][col] == val) {
+                    this.cells[msg][col].classList.remove("hovered");
                 }
             }
         }
