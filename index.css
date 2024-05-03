@@ -195,7 +195,6 @@ hr {
 
 .messages span {
     display: inline-block;
-    overflow: hidden;
     background-color: #e3e3e3;
     margin: 0rem;
     width: var(--max-width);
