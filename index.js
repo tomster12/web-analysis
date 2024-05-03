@@ -283,10 +283,20 @@ class MessagesContent {
         // Set max width of span with this.element style
         this.element.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
 
-        // Create div for each row, span for each cell
         this.messages = messages;
         this.cells = [];
         this.element.innerHTML = "";
+
+        // Create index row
+        const row = createElement(`<div class="indices"></div>`);
+        let maxLength = Math.max(...messages.map((line) => line.length));
+        for (let col = 0; col < maxLength; col++) {
+            const cell = createElement(`<span>${col}</span>`);
+            row.appendChild(cell);
+        }
+        this.element.appendChild(row);
+
+        // Create div for each row, span for each cell
         for (let msg = 0; msg < messages.length; msg++) {
             const row = createElement(`<div class="message"></div>`);
             this.cells.push([]);
@@ -516,6 +526,7 @@ class InputWidget {
                 comma: "assets/icon-comma.png",
                 dot: "assets/icon-dot.png",
                 letter: "assets/icon-a.png",
+                space: "assets/icon-space.png",
             },
             "comma",
             (delimeter) => {
@@ -573,7 +584,7 @@ class InputWidget {
         if (this.messages == null || this.messages == []) return;
 
         // Parse messages with delimeter, convert based on option
-        let delim = this.delimeter == "comma" ? "," : this.delimeter == "dot" ? "." : "";
+        let delim = this.delimeter == "comma" ? "," : this.delimeter == "dot" ? "." : this.delimeter == "space" ? " " : "";
         let parsedMessages = parseMessages(this.messages, delim);
         this.outputMessages = convertMessages(parsedMessages, this.convertOption);
 
