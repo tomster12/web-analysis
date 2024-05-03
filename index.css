@@ -177,7 +177,12 @@ hr {
     font-family: Cousine;
 }
 
+.messages .message {
+    width: fit-content;
+}
+
 .messages .indices {
+    width: fit-content;
     background-color: #ffffff;
     border-bottom: 1px solid #dddddd;
     margin-bottom: 0.4rem;
@@ -190,6 +195,7 @@ hr {
 
 .messages span {
     display: inline-block;
+    overflow: hidden;
     background-color: #e3e3e3;
     margin: 0rem;
     width: var(--max-width);
