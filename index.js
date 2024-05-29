@@ -500,14 +500,15 @@ var InputWidget = /** @class */ (function () {
             _this.convertOption = convertOption;
             _this.processMessages();
         });
-        this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
-        this.elementOptionsConvert.appendChild(this.convertDropdown.element);
+        // Setup toggle spacing button
         this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
             _this.messageView.toggleSpacing();
             _this.elementAlphabet.classList.toggle("use-gaps");
         });
+        // Add elements to container
+        this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
+        this.elementOptionsConvert.appendChild(this.convertDropdown.element);
         this.container.addHeaderExtra(this.toggleSpacingButton.element);
-        // Add elements to container after setup
         this.container.addContent(this.element);
         // Setup input and output events
         this.outputEvent = new ListenableEvent();
@@ -603,9 +604,8 @@ var AlignmentWidget = /** @class */ (function () {
         this.messageView = new MessagesView();
         this.container.addContent(this.messageView.element);
         // Setup toggle gaps button
-        this.toggleSpacingButton = new Button(this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png", function () {
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
             _this.messageView.toggleSpacing();
-            _this.toggleSpacingButton.element.src = _this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
         this.container.addHeaderExtra(this.toggleSpacingButton.element);
         // Setup text event listener
@@ -626,27 +626,25 @@ var GapsWidget = /** @class */ (function () {
         this.messageView = new MessagesView();
         this.container.addContent(this.messageView.element);
         this.gapLimit = gapLimit;
-        // Setup toggle spacing button
-        this.toggleSpacingButton = new Button(this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png", function () {
-            _this.messageView.toggleSpacing();
-            _this.toggleSpacingButton.element.src = _this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
-        });
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
-        // Setup toggle show gaps button
         this.showGaps = false;
-        this.toggleShowGapsButton = new Button("assets/icon-ruler.png", function () {
+        this.includeEnd = false;
+        // Setup toggle spacing button
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
+            _this.messageView.toggleSpacing();
+        });
+        // Setup toggle show gaps button
+        this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", function () {
             _this.showGaps = !_this.showGaps;
-            _this.toggleShowGapsButton.element.src = _this.showGaps ? "assets/icon-eye.png" : "assets/icon-ruler.png";
             _this.messageView.setMessages(_this.showGaps ? _this.messagesGaps : _this.messages, _this.messagesGaps);
         });
-        this.container.addHeaderExtra(this.toggleShowGapsButton.element);
         // Setup toggle include end button
-        this.includeEnd = false;
-        this.toggleIncludeEndButton = new Button("assets/icon-paperclip-on.png", function () {
+        this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", function () {
             _this.includeEnd = !_this.includeEnd;
-            _this.toggleIncludeEndButton.element.src = _this.includeEnd ? "assets/icon-dot.png" : "assets/icon-paperclip-on.png";
             _this.recalculateGaps();
         });
+        // Add elements to container after setup
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
+        this.container.addHeaderExtra(this.toggleShowGapsButton.element);
         this.container.addHeaderExtra(this.toggleIncludeEndButton.element);
         // Setup text event listener
         inputEvent.subscribe(function (messages) {
@@ -656,6 +654,7 @@ var GapsWidget = /** @class */ (function () {
     }
     GapsWidget.prototype.recalculateGaps = function () {
         this.messagesGaps = calculateGaps(this.messages, this.gapLimit, this.includeEnd);
+        // Calculate gap messages for display
         this.messageGapValues = [];
         for (var msg = 0; msg < this.messagesGaps.length; msg++) {
             this.messageGapValues.push([]);
@@ -663,6 +662,7 @@ var GapsWidget = /** @class */ (function () {
                 this.messageGapValues[msg].push(this.messagesGaps[msg][col].length == 0 ? 0 : Math.abs(this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1]));
             }
         }
+        // Set messages based on show gaps
         this.messageView.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
     };
     return GapsWidget;

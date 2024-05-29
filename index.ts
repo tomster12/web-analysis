@@ -10,7 +10,7 @@ type HighlightData = number[][] | number[][][] | string[][] | null;
 
 // ------------------------ Constants ------------------------
 
-const ELEMENT_MAIN = document.querySelector(".main");
+const ELEMENT_MAIN = document.querySelector(".main") as HTMLElement;
 
 const EXAMPLE_MESSAGES = [
     [
@@ -619,16 +619,17 @@ class InputWidget implements Widget {
                 this.processMessages();
             }
         );
-        this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
-        this.elementOptionsConvert.appendChild(this.convertDropdown.element);
 
+        // Setup toggle spacing button
         this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
             this.messageView.toggleSpacing();
             this.elementAlphabet.classList.toggle("use-gaps");
         });
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
 
-        // Add elements to container after setup
+        // Add elements to container
+        this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
+        this.elementOptionsConvert.appendChild(this.convertDropdown.element);
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
         this.container.addContent(this.element);
 
         // Setup input and output events
@@ -733,7 +734,7 @@ class StatsWidget implements Widget {
 class AlignmentWidget implements Widget {
     container: WidgetContainer;
     messageView: MessagesView;
-    toggleSpacingButton: Button;
+    toggleSpacingButton: ToggleButton;
     messages: Message[];
     messagesAlignments: NumberMessage[];
 
@@ -744,9 +745,8 @@ class AlignmentWidget implements Widget {
         this.container.addContent(this.messageView.element);
 
         // Setup toggle gaps button
-        this.toggleSpacingButton = new Button(this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png", () => {
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
             this.messageView.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
         this.container.addHeaderExtra(this.toggleSpacingButton.element);
 
@@ -762,14 +762,15 @@ class AlignmentWidget implements Widget {
 class GapsWidget implements Widget {
     container: WidgetContainer;
     messageView: MessagesView;
-    toggleSpacingButton: Button;
-    toggleShowGapsButton: Button;
-    toggleIncludeEndButton: Button;
+    toggleSpacingButton: ToggleButton;
+    toggleShowGapsButton: ToggleButton;
+    toggleIncludeEndButton: ToggleButton;
     gapLimit: number;
     includeEnd: boolean;
     showGaps: boolean;
     messages: Message[];
-    messagesGaps: NumberMessage[];
+    messagesGaps: number[][][];
+    messageGapValues: NumberMessage[];
 
     constructor(parent: HTMLElement, inputEvent: ListenableEvent, gapLimit: number = 15) {
         // Setup container and put input inside
@@ -777,30 +778,29 @@ class GapsWidget implements Widget {
         this.messageView = new MessagesView();
         this.container.addContent(this.messageView.element);
         this.gapLimit = gapLimit;
+        this.showGaps = false;
+        this.includeEnd = false;
 
         // Setup toggle spacing button
-        this.toggleSpacingButton = new Button(this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png", () => {
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
             this.messageView.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
 
         // Setup toggle show gaps button
-        this.showGaps = false;
-        this.toggleShowGapsButton = new Button("assets/icon-ruler.png", () => {
+        this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", () => {
             this.showGaps = !this.showGaps;
-            this.toggleShowGapsButton.element.src = this.showGaps ? "assets/icon-eye.png" : "assets/icon-ruler.png";
             this.messageView.setMessages(this.showGaps ? this.messagesGaps : this.messages, this.messagesGaps);
         });
-        this.container.addHeaderExtra(this.toggleShowGapsButton.element);
 
         // Setup toggle include end button
-        this.includeEnd = false;
-        this.toggleIncludeEndButton = new Button("assets/icon-paperclip-on.png", () => {
+        this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", () => {
             this.includeEnd = !this.includeEnd;
-            this.toggleIncludeEndButton.element.src = this.includeEnd ? "assets/icon-dot.png" : "assets/icon-paperclip-on.png";
             this.recalculateGaps();
         });
+
+        // Add elements to container after setup
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
+        this.container.addHeaderExtra(this.toggleShowGapsButton.element);
         this.container.addHeaderExtra(this.toggleIncludeEndButton.element);
 
         // Setup text event listener
@@ -813,6 +813,7 @@ class GapsWidget implements Widget {
     recalculateGaps() {
         this.messagesGaps = calculateGaps(this.messages, this.gapLimit, this.includeEnd);
 
+        // Calculate gap messages for display
         this.messageGapValues = [];
         for (let msg = 0; msg < this.messagesGaps.length; msg++) {
             this.messageGapValues.push([]);
@@ -823,6 +824,7 @@ class GapsWidget implements Widget {
             }
         }
 
+        // Set messages based on show gaps
         this.messageView.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
     }
 }
