@@ -1,6 +1,7 @@
-const ELEMENT_MAIN = document.querySelector(".main");
-
-const EXAMPLE_MESSAGES = [
+// ------------------------ Types ------------------------
+// ------------------------ Constants ------------------------
+var ELEMENT_MAIN = document.querySelector(".main");
+var EXAMPLE_MESSAGES = [
     [
         50, 66, 5, 48, 62, 13, 75, 29, 24, 61, 42, 70, 66, 62, 32, 14, 81, 8, 15, 78, 2, 29, 13, 49, 1, 80, 82, 40, 63, 81, 21, 19, 0, 40, 51, 65, 26, 14, 21,
         70, 47, 44, 48, 42, 19, 48, 13, 47, 19, 49, 72, 31, 5, 24, 3, 43, 59, 67, 33, 49, 41, 60, 21, 26, 30, 5, 25, 20, 71, 11, 74, 56, 4, 74, 19, 71, 4, 51,
@@ -52,102 +53,94 @@ const EXAMPLE_MESSAGES = [
         12, 22, 76, 20, 51, 62, 21, 40, 9, 41, 10, 44, 73, 8, 33, 70, 73, 6, 31, 21, 72, 5, 40, 61, 51, 42, 66, 64, 74, 61, 25, 63, 42, 24, 41,
     ],
 ];
-
-let HIGHLIGHTS = [];
-const HIGHLIGHT_COUNT = 15;
-const HIGHLIGHT_COLOUR_SPIRALS = 4;
-const HIGHLIGHT_COLOUR_GAP = 360 / HIGHLIGHT_COLOUR_SPIRALS;
-for (let i = 0; i < HIGHLIGHT_COUNT; i++) {
-    let base = (i % HIGHLIGHT_COLOUR_SPIRALS) * HIGHLIGHT_COLOUR_GAP;
-    let hue = (base + (i / HIGHLIGHT_COUNT) * HIGHLIGHT_COLOUR_GAP) % 360;
-    HIGHLIGHTS.push(`hsl(${hue}, 75%, 75%)`);
+var HIGHLIGHTS = [];
+var HIGHLIGHT_COUNT = 15;
+var HIGHLIGHT_COLOUR_SPIRALS = 4;
+var HIGHLIGHT_COLOUR_GAP = 360 / HIGHLIGHT_COLOUR_SPIRALS;
+for (var i = 0; i < HIGHLIGHT_COUNT; i++) {
+    var base = (i % HIGHLIGHT_COLOUR_SPIRALS) * HIGHLIGHT_COLOUR_GAP;
+    var hue = (base + (i / HIGHLIGHT_COUNT) * HIGHLIGHT_COLOUR_GAP) % 360;
+    HIGHLIGHTS.push("hsl(".concat(hue, ", 75%, 75%)"));
 }
-
 // ------------------------ Crypto ------------------------
-
-// Messages: char[][]
-function parseMessages(text, delim = ",") {
-    if (text == "") return [];
-    let lines = text.split("\n");
-    lines = lines.filter((line) => line != "");
-    lines = lines.map((line) => line.split(delim));
-    return lines;
+function parseMessages(text, delimType) {
+    if (text == "")
+        return [];
+    var lines = text.split("\n");
+    lines = lines.filter(function (line) { return line != ""; });
+    var delim = delimType == "comma" ? "," : delimType == "dot" ? "." : delimType == "letter" ? "" : " ";
+    return lines.map(function (line) { return line.split(delim); });
 }
-
-// Messages: char[][]
 function convertMessages(messages, convertOption) {
-    let converted = [];
-
-    if (convertOption == "Unique") {
-        var uniqueID = 0;
-        var uniqueMap = {};
-    }
-
+    // Potentially unused variables
+    var uniqueID = 0;
+    var uniqueMap = {};
     // Convert messages based on convertOption
-    for (let msg = 0; msg < messages.length; msg++) {
-        converted.push([]);
-        for (let col = 0; col < messages[msg].length; col++) {
-            const val = messages[msg][col];
-            if (convertOption == "Int") {
-                converted[msg].push(parseInt(val));
-            } else if (convertOption == "Unique") {
-                if (uniqueMap[val] == null) uniqueMap[val] = uniqueID++;
-                converted[msg].push(uniqueMap[val]);
-            } else if (convertOption == "ToAscii") {
-                converted[msg].push(String.fromCharCode(parseInt(val) + 32));
-            } else if (convertOption == "FromAscii") {
-                converted[msg].push(val.charCodeAt(0) - 32);
-            } else {
-                converted[msg].push(val);
-            }
+    var output = [];
+    for (var msg = 0; msg < messages.length; msg++) {
+        if (convertOption == "Int") {
+            output.push(messages[msg].map(function (val) { return parseInt(val); }));
+        }
+        else if (convertOption == "Unique") {
+            output.push(messages[msg].map(function (val) {
+                if (uniqueMap[val] == null)
+                    uniqueMap[val] = uniqueID++;
+                return uniqueMap[val];
+            }));
+        }
+        else if (convertOption == "ToAscii") {
+            output.push(messages[msg].map(function (val) { return String.fromCharCode(parseInt(val) + 32); }));
+        }
+        else if (convertOption == "FromAscii") {
+            output.push(messages[msg].map(function (val) { return (val.charCodeAt(0) - 32).toString(); }));
+        }
+        else {
+            output.push(messages[msg]);
         }
     }
-
-    return converted;
+    return output;
 }
-
-// Alphabet: Set<char>
 function parseAlphabet(messages) {
-    let alphabet = new Set();
-    for (let msg = 0; msg < messages.length; msg++) {
-        for (let col = 0; col < messages[msg].length; col++) {
-            alphabet.add(messages[msg][col]);
+    // Get all unique characters
+    var messagesStr = messages;
+    var alphSet = new Set();
+    for (var msg = 0; msg < messagesStr.length; msg++) {
+        for (var col = 0; col < messagesStr[msg].length; col++) {
+            alphSet.add(messagesStr[msg][col]);
         }
     }
-    alphabet = Array.from(alphabet);
-
-    // If all elements are numbers sort
-    if (alphabet.every((char) => !isNaN(char))) {
-        alphabet.sort((a, b) => a - b);
+    // Either sort numbers or characters
+    var isNum = messages.every(function (line) { return line.every(function (val) { return !isNaN(parseInt(val)); }); });
+    if (isNum) {
+        return Array.from(alphSet).sort(function (a, b) { return parseInt(a) - parseInt(b); });
     }
-
-    return alphabet;
+    else {
+        return Array.from(alphSet).sort();
+    }
 }
-
-// Shared: int[][]
 function calculateAlignments(messages) {
-    const maxLength = Math.max(...messages.map((line) => line.length));
-    let shared = [];
-    for (let i = 0; i < messages.length; i++) shared.push([]);
-
+    var maxLength = Math.max.apply(Math, messages.map(function (line) { return line.length; }));
+    var shared = [];
+    for (var i = 0; i < messages.length; i++)
+        shared.push([]);
     // For each column in the messages
-    for (let col = 0; col < maxLength; col++) {
-        let found = {};
-        let assignedIDs = {};
-        let nextID = 1;
-
+    for (var col = 0; col < maxLength; col++) {
+        var found = {};
+        var assignedIDs = {};
+        var nextID = 1;
         // For each message that has this column
-        for (let msg = 0; msg < messages.length; msg++) {
-            if (col >= messages[msg].length) continue;
-            val = messages[msg][col];
-
+        for (var msg = 0; msg < messages.length; msg++) {
+            if (col >= messages[msg].length)
+                continue;
+            var val = messages[msg][col];
             // 0 if unique, next ID otherwise
             if (found[val] == null) {
                 found[val] = msg;
                 shared[msg].push(0);
-            } else {
+            }
+            else {
                 if (assignedIDs[val] == null) {
-                    const id = nextID++;
+                    var id = nextID++;
                     assignedIDs[val] = id;
                     shared[found[val]][col] = id;
                 }
@@ -155,649 +148,556 @@ function calculateAlignments(messages) {
             }
         }
     }
-
     return shared;
 }
-
-// Gaps: int[][]
-function calculateGaps(messages, gapLimit, includeEnd = false) {
-    let gaps = [];
-
-    // For each message
-    for (let msg = 0; msg < messages.length; msg++) {
+function calculateGaps(messages, gapLimit, includeEnd) {
+    var gaps = [];
+    for (var msg = 0; msg < messages.length; msg++) {
         gaps.push([]);
-        found = {};
-
-        // For each column in the message
-        for (let col = 0; col < messages[msg].length; col++) {
-            val = messages[msg][col];
+        var found = {};
+        for (var col = 0; col < messages[msg].length; col++) {
+            var val = messages[msg][col];
             gaps[msg].push([]);
-
             // 0 by default, on gap set start
             if (found[val] != null) {
-                const diff = col - found[val];
+                var diff = col - found[val];
                 if (diff <= gapLimit) {
                     gaps[msg][found[val]].push(diff);
-                    if (includeEnd) gaps[msg][col].push(-diff);
+                    if (includeEnd)
+                        gaps[msg][col].push(-diff);
                 }
             }
-
             found[val] = col;
         }
     }
-
     return gaps;
 }
-
-// Frequencies: dict<char, int>
 function calculateFrequencies(messages) {
-    let freqs = {};
-    for (let msg = 0; msg < messages.length; msg++) {
-        for (let col = 0; col < messages[msg].length; col++) {
-            const val = messages[msg][col];
-            if (freqs[val] == null) freqs[val] = 0;
+    var freqs = {};
+    for (var msg = 0; msg < messages.length; msg++) {
+        for (var col = 0; col < messages[msg].length; col++) {
+            var val = messages[msg][col];
+            if (freqs[val] == null)
+                freqs[val] = 0;
             freqs[val]++;
         }
     }
     return freqs;
 }
-
-// Deltas: int[][]
-function calculateDeltas(messages, modSize = null) {
-    let deltas = [];
-    for (let msg = 0; msg < messages.length; msg++) {
+function calculateDeltas(messages, modSize) {
+    var deltas = [];
+    for (var msg = 0; msg < messages.length; msg++) {
         deltas.push([]);
-        for (let col = 1; col < messages[msg].length; col++) {
-            let delta = messages[msg][col] - messages[msg][col - 1];
-            if (modSize != null) delta = (delta + modSize) % modSize;
+        for (var col = 1; col < messages[msg].length; col++) {
+            var delta = messages[msg][col] - messages[msg][col - 1];
+            if (modSize != null)
+                delta = (delta + modSize) % modSize;
             deltas[msg].push(delta);
         }
     }
     return deltas;
 }
-
 function calculateIoC(messages, alphabetSize) {
-    let freqs = calculateFrequencies(messages);
-
-    let total = 0;
-    let N = 0;
-    for (let char in freqs) {
-        n = freqs[char];
+    var freqs = calculateFrequencies(messages);
+    var total = 0;
+    var N = 0;
+    for (var char in freqs) {
+        var n = freqs[char];
         total += n * (n - 1);
         N += n;
     }
-
     return total / ((N * (N - 1)) / alphabetSize);
 }
-
 // ------------------------ Utility ------------------------
-
 function createElement(html) {
-    const element = document.createElement("div");
+    var element = document.createElement("div");
     element.innerHTML = html.trim();
     return element.firstChild;
 }
-
-class ListenableEvent {
-    constructor() {
+var ListenableEvent = /** @class */ (function () {
+    function ListenableEvent() {
         this.listeners = [];
     }
-
-    subscribe(listener) {
+    ListenableEvent.prototype.subscribe = function (listener) {
         this.listeners.push(listener);
-    }
-
-    fire(...args) {
-        this.listeners.forEach((listener) => listener(...args));
-    }
-}
-
-class MessagesContent {
-    static HTML = `
-        <div class="messages use-gaps"></div>
-    `;
-
-    constructor(highlightMode = "Categoric") {
-        // Assert highlightMode
-        if (highlightMode != "Categoric" && highlightMode != "Numeric") {
-            throw new Error("Invalid highlight mode");
+    };
+    ListenableEvent.prototype.fire = function () {
+        var args = [];
+        for (var _i = 0; _i < arguments.length; _i++) {
+            args[_i] = arguments[_i];
         }
-
-        // Setup content variables
+        this.listeners.forEach(function (listener) { return listener.apply(void 0, args); });
+    };
+    return ListenableEvent;
+}());
+var MessagesView = /** @class */ (function () {
+    function MessagesView(highlightMode) {
+        if (highlightMode === void 0) { highlightMode = "Categoric"; }
+        this.element = createElement(MessagesView.HTML);
         this.messages = [];
-        this.highlight = null;
         this.highlightMode = highlightMode;
-        this.useSpacing = true;
-        this.element = createElement(MessagesContent.HTML);
+        this.useSpacing = false;
     }
-
-    setMessages(messages, highlight = null) {
+    MessagesView.prototype.setMessages = function (messages, highlight) {
+        var _this = this;
+        if (highlight === void 0) { highlight = null; }
+        this.messages = messages;
+        this.element.innerHTML = "";
+        this.cells = [];
         // Find fixed width based on maximum character count
-        let maxWidth = 0;
-        for (let msg = 0; msg < messages.length; msg++) {
-            for (let col = 0; col < messages[msg].length; col++) {
+        var maxWidth = 0;
+        for (var msg = 0; msg < messages.length; msg++) {
+            for (var col = 0; col < messages[msg].length; col++) {
                 maxWidth = Math.max(maxWidth, messages[msg][col].toString().length);
             }
         }
-
-        // Set max width of span with this.element style
-        this.element.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
-
-        this.messages = messages;
-        this.cells = [];
-        this.element.innerHTML = "";
-
+        // Set max width of spans with base element variable
+        this.element.style.setProperty("--max-width", "".concat(maxWidth * 1.4 * 0.85, "rem"));
         // Create index row
-        const row = createElement(`<div class="indices"></div>`);
-        let maxLength = Math.max(...messages.map((line) => line.length));
-        for (let col = 0; col < maxLength; col++) {
-            const cell = createElement(`<span>${col}</span>`);
+        var row = createElement("<div class=\"indices\"></div>");
+        var maxLength = Math.max.apply(Math, messages.map(function (line) { return line.length; }));
+        for (var col = 0; col < maxLength; col++) {
+            var cell = createElement("<span>".concat(col, "</span>"));
             row.appendChild(cell);
         }
         this.element.appendChild(row);
-
-        // Create div for each row, span for each cell
-        for (let msg = 0; msg < messages.length; msg++) {
-            const row = createElement(`<div class="message"></div>`);
-            this.cells.push([]);
-            for (let col = 0; col < messages[msg].length; col++) {
-                const cell = createElement(`<span>${messages[msg][col]}</span>`);
-                cell.addEventListener("mouseenter", () => this.hoverValue(messages[msg][col]));
-                cell.addEventListener("mouseleave", () => this.unhoverValue(messages[msg][col]));
-                row.appendChild(cell);
-                this.cells[msg].push(cell);
+        var _loop_1 = function (msg) {
+            var row_1 = createElement("<div class=\"message\"></div>");
+            this_1.cells.push([]);
+            var _loop_2 = function (col) {
+                var cell = createElement("<span>".concat(messages[msg][col], "</span>"));
+                cell.addEventListener("mouseenter", function () { return _this.hoverLetter(messages[msg][col]); });
+                cell.addEventListener("mouseleave", function () { return _this.unhoverLetter(messages[msg][col]); });
+                row_1.appendChild(cell);
+                this_1.cells[msg].push(cell);
+            };
+            for (var col = 0; col < messages[msg].length; col++) {
+                _loop_2(col);
             }
-            this.element.appendChild(row);
+            this_1.element.appendChild(row_1);
+        };
+        var this_1 = this;
+        // Create div for each row, span for each cell
+        for (var msg = 0; msg < messages.length; msg++) {
+            _loop_1(msg);
         }
-
         // Highlight letters
         this.setHighlight(highlight);
-    }
-
-    setHighlight(highlight) {
+    };
+    MessagesView.prototype.setHighlight = function (highlight) {
         this.highlight = highlight;
-        if (highlight == null) return;
-
-        // Highlight every span
-        for (let msg = 0; msg < this.messages.length; msg++) {
-            for (let col = 0; col < this.messages[msg].length; col++) {
+        if (highlight == null)
+            return;
+        // Highlight every span based on highlight data and mode
+        for (var msg = 0; msg < this.messages.length; msg++) {
+            for (var col = 0; col < this.messages[msg].length; col++) {
+                // Categoric: Pick from global colour array
                 if (this.highlightMode == "Categoric") {
-                    let highlight = this.highlight[msg][col];
-                    if (!Array.isArray(highlight)) {
+                    var letterHighlight = highlight[msg][col];
+                    if (!Array.isArray(letterHighlight)) {
                         // Categoric: Single value colour
-                        if (highlight > 0) {
-                            var colA = HIGHLIGHTS[Math.abs(highlight - 1) % HIGHLIGHT_COUNT];
+                        letterHighlight = letterHighlight;
+                        this.cells[msg][col].title = letterHighlight.toString();
+                        if (letterHighlight > 0) {
+                            var colA = HIGHLIGHTS[Math.abs(letterHighlight - 1) % HIGHLIGHT_COUNT];
                             this.cells[msg][col].style.backgroundColor = colA;
                         }
-                    } else {
-                        // Categoric: Allow gradient
-                        var colA = HIGHLIGHTS[Math.abs(highlight[0]) % HIGHLIGHT_COUNT];
-                        if (highlight.length == 1) {
+                    }
+                    else {
+                        // Categoric: Gradient between two colours
+                        letterHighlight = letterHighlight;
+                        if (letterHighlight.length == 1) {
+                            var colA = HIGHLIGHTS[Math.abs(letterHighlight[0]) % HIGHLIGHT_COUNT];
                             this.cells[msg][col].style.backgroundColor = colA;
-                        } else if (highlight.length == 2) {
-                            const colB = HIGHLIGHTS[Math.abs(highlight[1]) % HIGHLIGHT_COUNT];
-                            const style = `linear-gradient(to right, ${colA}, ${colB})`;
+                        }
+                        else if (letterHighlight.length == 2) {
+                            var colA = HIGHLIGHTS[Math.abs(letterHighlight[0]) % HIGHLIGHT_COUNT];
+                            var colB = HIGHLIGHTS[Math.abs(letterHighlight[1]) % HIGHLIGHT_COUNT];
+                            var style = "linear-gradient(to right, ".concat(colA, ", ").concat(colB, ")");
                             this.cells[msg][col].style.backgroundImage = style;
                         }
                     }
-                    this.cells[msg][col].title = highlight;
-                } else if (this.highlightMode == "Numeric") {
+                }
+                else {
                     // Numeric: Set highlight as colour
-                    this.cells[msg][col].style.backgroundColor = highlight[msg][col];
+                    var letterHighlight = highlight[msg][col];
+                    this.cells[msg][col].style.backgroundColor = letterHighlight;
                 }
             }
         }
-    }
-
-    hoverValue(val) {
+    };
+    MessagesView.prototype.hoverLetter = function (val) {
+        // Highlight all cells with the same value
         this.element.classList.add("cell-hovered");
-        for (let msg = 0; msg < this.messages.length; msg++) {
-            for (let col = 0; col < this.messages[msg].length; col++) {
+        for (var msg = 0; msg < this.messages.length; msg++) {
+            for (var col = 0; col < this.messages[msg].length; col++) {
                 if (this.messages[msg][col] == val) {
                     this.cells[msg][col].classList.add("hovered");
                 }
             }
         }
-    }
-
-    unhoverValue(val) {
+    };
+    MessagesView.prototype.unhoverLetter = function (val) {
+        // Remove highlight from all cells with the same value
         this.element.classList.remove("cell-hovered");
-        for (let msg = 0; msg < this.messages.length; msg++) {
-            for (let col = 0; col < this.messages[msg].length; col++) {
+        for (var msg = 0; msg < this.messages.length; msg++) {
+            for (var col = 0; col < this.messages[msg].length; col++) {
                 if (this.messages[msg][col] == val) {
                     this.cells[msg][col].classList.remove("hovered");
                 }
             }
         }
-    }
-
-    toggleSpacing() {
+    };
+    MessagesView.prototype.toggleSpacing = function () {
+        // Toggle spacing and update class
         this.element.classList.toggle("use-gaps");
         this.useSpacing = !this.useSpacing;
-    }
-}
-
-class Button {
-    static HTML = `<img class="widget-button">`;
-
-    constructor(iconPath, callback) {
-        this.element = createElement(Button.HTML);
-        this.element.src = iconPath;
-
+    };
+    MessagesView.HTML = "<div class=\"messages\"></div>";
+    return MessagesView;
+}());
+var ToggleButton = /** @class */ (function () {
+    function ToggleButton(initial, offIconPath, onIconPath, callback) {
+        var _this = this;
+        this.element = createElement(ToggleButton.HTML);
+        this.element.src = initial ? onIconPath : offIconPath;
         // Setup event and listener
         this.clickEvent = new ListenableEvent();
-        this.element.addEventListener("click", (e) => {
+        this.toggled = initial;
+        this.element.addEventListener("click", function (e) {
             e.stopPropagation();
-            this.clickEvent.fire(e);
+            _this.toggled = !_this.toggled;
+            _this.element.classList.toggle("toggled");
+            _this.element.src = _this.toggled ? onIconPath : offIconPath;
+            _this.clickEvent.fire(e, _this.toggled);
         });
-
         // Subscribe callback if provided
-        if (callback != null) this.clickEvent.subscribe(callback);
+        if (callback != null)
+            this.clickEvent.subscribe(callback);
     }
-}
-
-class Dropdown {
-    static HTML = `
-        <div class="dropdown">
-            <img class="dropdown-icon-current"><img class="dropdown-icon-select" src="assets/icon-dropdown.png">
-            <div class="dropdown-options"></div>
-        </div> 
-    `;
-
-    constructor(options, initial, callback) {
+    ToggleButton.prototype.setIcon = function (iconPath) {
+        this.element.src = iconPath;
+    };
+    ToggleButton.HTML = "<img class=\"widget-button\">";
+    return ToggleButton;
+}());
+var Dropdown = /** @class */ (function () {
+    function Dropdown(options, initial, callback) {
+        var _this = this;
+        // Setup elements
         this.element = createElement(Dropdown.HTML);
-
-        // Setup variables
-        this.options = options;
         this.elementIconCurrent = this.element.querySelector(".dropdown-icon-current");
         this.elementIconSelect = this.element.querySelector(".dropdown-icon-select");
         this.elementOptions = this.element.querySelector(".dropdown-options");
-
-        // Hide dropdown
         this.elementOptions.style.display = "none";
-
-        // Setup all options
-        for (let option in options) {
-            const optionElement = createElement(`<div>`);
-            const imgElement = createElement(`<img>`);
+        this.options = options;
+        var _loop_3 = function (option) {
+            // Create option element
+            var optionElement = createElement("<div>");
+            var imgElement = createElement("<img>");
+            imgElement.src = this_2.options[option];
             optionElement.appendChild(imgElement);
-            imgElement.src = options[option];
-            this.elementOptions.appendChild(optionElement);
-
+            this_2.elementOptions.appendChild(optionElement);
             // Add event listener
-            optionElement.addEventListener("click", (e) => {
+            optionElement.addEventListener("click", function (e) {
                 e.stopPropagation();
-                this.selectOption(option);
-                this.elementOptions.style.display = "none";
+                _this.selectOption(option);
+                _this.elementOptions.style.display = "none";
             });
+        };
+        var this_2 = this;
+        for (var option in this.options) {
+            _loop_3(option);
         }
-
-        // Setup event and listener
-        this.selectEvent = new ListenableEvent();
-
-        // Subscribe callback if provided
-        if (callback != null) this.selectEvent.subscribe(callback);
-
-        // Listener on dropdown to open
-        this.element.addEventListener("click", (e) => {
+        // Toggle dropdown visibility on click
+        this.element.addEventListener("click", function (e) {
             e.stopPropagation();
-            this.elementOptions.style.display = this.elementOptions.style.display == "none" ? "flex" : "none";
+            _this.elementOptions.style.display = _this.elementOptions.style.display == "none" ? "flex" : "none";
         });
-
-        // Select initial
+        // Setup select event and select initial
+        this.selectEvent = new ListenableEvent();
+        if (callback != null)
+            this.selectEvent.subscribe(callback);
         this.selectOption(initial);
     }
-
-    selectOption(option) {
+    Dropdown.prototype.selectOption = function (option) {
+        // Set selected option and update icon
         this.selected = option;
         this.elementIconCurrent.src = this.options[option];
         this.selectEvent.fire(option);
-    }
-}
-
-// ------------------------ Widgets ------------------------
-
-class WidgetContainer {
-    static HTML = `
-        <div class="widget-container">
-            <div class="widget-header">
-                <div class="widget-title"></div>
-                <div class="widget-extra"></div>
-            </div>
-            <div class="widget-content"></div>
-        </div>
-    `;
-
-    constructor(parent, title = "") {
-        this.isClosed = false;
-
+    };
+    Dropdown.HTML = "\n    <div class=\"dropdown\">\n        <img class=\"dropdown-icon-current\"><img class=\"dropdown-icon-select\" src=\"assets/icon-dropdown.png\">\n        <div class=\"dropdown-options\"></div>\n    </div>";
+    return Dropdown;
+}());
+var WidgetContainer = /** @class */ (function () {
+    function WidgetContainer(parent, title) {
+        if (parent === void 0) { parent = null; }
+        if (title === void 0) { title = ""; }
+        var _this = this;
         // Setup container
         this.element = createElement(WidgetContainer.HTML);
         this.elementHeader = this.element.querySelector(".widget-header");
         this.elementTitle = this.element.querySelector(".widget-title");
         this.elementExtra = this.element.querySelector(".widget-extra");
         this.elementContent = this.element.querySelector(".widget-content");
-        if (parent != null) parent.appendChild(this.element);
-
+        if (parent != null)
+            parent.appendChild(this.element);
         // Add title close listener
-        this.elementHeader.addEventListener("click", () => this.toggleClosed());
-
+        this.isClosed = false;
+        this.elementHeader.addEventListener("click", function () { return _this.toggleClosed(); });
         // Set title
         this.setTitle(title);
     }
-
-    addExtra(extra) {
-        this.elementExtra.appendChild(extra);
-    }
-
-    setTitle(title) {
+    WidgetContainer.prototype.setTitle = function (title) {
         this.elementTitle.textContent = title;
-    }
-
-    addContent(content) {
+    };
+    WidgetContainer.prototype.addHeaderExtra = function (extra) {
+        this.elementExtra.appendChild(extra);
+    };
+    WidgetContainer.prototype.addContent = function (content) {
         this.elementContent.appendChild(content);
-    }
-
-    toggleClosed() {
+    };
+    WidgetContainer.prototype.toggleClosed = function () {
         this.isClosed = !this.isClosed;
         this.element.classList.toggle("closed");
         this.elementContent.style.display = this.isClosed ? "none" : "block";
-    }
-}
-
-class InputWidget {
-    static HTML = `
-        <div class="input-container">
-
-            <div class="input-field-container">
-                <img class="input-field-icon" src="assets/icon-input.png">
-                <div class="input-field" contentEditable="true"></div>
-            </div>
-
-            <div class="input-options-container">
-                <p>Delimeter</p>
-                <div class="input-options-delimeter"></div>
-                <p>Convert Mode</p>
-                <div class="input-options-convert"></div>
-            </div>
-
-            <div class="input-parsed"></div>
-
-            <div class="input-alphabet-container">
-                <img src="assets/icon-alphabet.png">
-                <div class="input-alphabet use-gaps"></div>
-            </div>
-        </div>
-    `;
-
-    constructor(parent, inputEvent) {
-        this.delimeter = "comma";
-        this.convertOption = "None";
-
-        // Setup full container and grab elements
+    };
+    WidgetContainer.HTML = "\n    <div class=\"widget-container\">\n        <div class=\"widget-header\">\n            <div class=\"widget-title\"></div>\n            <div class=\"widget-extra\"></div>\n        </div>\n        <div class=\"widget-content\"></div>\n    </div>";
+    return WidgetContainer;
+}());
+var InputWidget = /** @class */ (function () {
+    function InputWidget(parent) {
+        var _this = this;
+        // Setup main elements
         this.container = new WidgetContainer(parent, "Input Ciphertext");
+        this.messageView = new MessagesView();
         this.element = createElement(InputWidget.HTML);
         this.elementInput = this.element.querySelector(".input-field");
         this.elementOptionsDelimeter = this.element.querySelector(".input-options-delimeter");
         this.elementOptionsConvert = this.element.querySelector(".input-options-convert");
         this.elementParsed = this.element.querySelector(".input-parsed");
         this.elementAlphabet = this.element.querySelector(".input-alphabet");
-        this.parsedContent = new MessagesContent();
-
-        // Create dropdowns
-        this.delimeterDropdown = new Dropdown(
-            {
-                comma: "assets/icon-comma.png",
-                dot: "assets/icon-dot.png",
-                letter: "assets/icon-a.png",
-                space: "assets/icon-space.png",
-            },
-            "comma",
-            (delimeter) => {
-                this.delimeter = delimeter;
-                this.processMessages();
-            }
-        );
-        this.convertDropdown = new Dropdown(
-            {
-                None: "assets/icon-identity.png",
-                Int: "assets/icon-123.png",
-                Unique: "assets/icon-abacus.png",
-                ToAscii: "assets/icon-to-ascii.png",
-                FromAscii: "assets/icon-from-ascii.png",
-            },
-            "None",
-            (convertOption) => {
-                this.convertOption = convertOption;
-                this.processMessages();
-            }
-        );
-
-        // Add elements to container
+        this.elementParsed.appendChild(this.messageView.element);
+        // Setup dropdown proxies
+        this.delimType = "comma";
+        this.delimeterDropdown = new Dropdown({
+            comma: "assets/icon-comma.png",
+            dot: "assets/icon-dot.png",
+            letter: "assets/icon-a.png",
+            space: "assets/icon-space.png",
+        }, "comma", function (delimType) {
+            _this.delimType = delimType;
+            _this.processMessages();
+        });
+        this.convertOption = "None";
+        this.convertDropdown = new Dropdown({
+            None: "assets/icon-identity.png",
+            Int: "assets/icon-123.png",
+            Unique: "assets/icon-abacus.png",
+            ToAscii: "assets/icon-to-ascii.png",
+            FromAscii: "assets/icon-from-ascii.png",
+        }, "None", function (convertOption) {
+            _this.convertOption = convertOption;
+            _this.processMessages();
+        });
         this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
         this.elementOptionsConvert.appendChild(this.convertDropdown.element);
-        this.elementParsed.appendChild(this.parsedContent.element);
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
+            _this.messageView.toggleSpacing();
+            _this.elementAlphabet.classList.toggle("use-gaps");
+        });
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
+        // Add elements to container after setup
         this.container.addContent(this.element);
-
-        // Setup toggle gaps button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.parsedContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.parsedContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
-            this.elementAlphabet.classList.toggle("use-gaps");
-        });
-        this.container.addExtra(this.toggleSpacingButton.element);
-
-        // Setup input listeners
+        // Setup input and output events
         this.outputEvent = new ListenableEvent();
-        this.elementInput.addEventListener("input", (e) => {
-            this.messages = this.elementInput.innerText;
-            this.processMessages();
+        this.elementInput.addEventListener("input", function (e) {
+            _this.rawMessages = _this.elementInput.innerText;
+            _this.processMessages();
         });
     }
-
-    setContent(input) {
-        this.elementInput.innerHTML = "";
-        input.forEach((line) => {
-            this.elementInput.innerHTML += `<div>${line}</div> `;
-        });
-        this.messages = this.elementInput.innerText;
-        this.processMessages();
-    }
-
-    processMessages() {
-        if (this.messages == null || this.messages == []) return;
-
-        // Parse messages with delimeter, convert based on option
-        let delim = this.delimeter == "comma" ? "," : this.delimeter == "dot" ? "." : this.delimeter == "space" ? " " : "";
-        let parsedMessages = parseMessages(this.messages, delim);
+    InputWidget.prototype.processMessages = function () {
+        var _this = this;
+        if (this.rawMessages == null)
+            return;
+        // Parse, convert, get alphabet
+        var parsedMessages = parseMessages(this.rawMessages, this.delimType);
         this.outputMessages = convertMessages(parsedMessages, this.convertOption);
-
-        // Parse alphabet and update alphabet output
         this.alphabet = parseAlphabet(this.outputMessages);
+        // Set alphabet elements
+        var maxWidth = 0;
         this.elementAlphabet.innerHTML = "";
-        this.alphabet.forEach((char) => {
-            const span = createElement(`<span>${char}</span>`);
-            this.elementAlphabet.appendChild(span);
+        this.alphabet.forEach(function (l) {
+            _this.elementAlphabet.appendChild(createElement("<span>".concat(l, "</span>")));
+            maxWidth = Math.max(maxWidth, l.length);
         });
-        let maxWidth = 0;
-        for (let l = 0; l < this.alphabet.length; l++) {
-            maxWidth = Math.max(maxWidth, this.alphabet[l].toString().length);
-        }
-        this.elementAlphabet.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
-
+        this.elementAlphabet.style.setProperty("--max-width", "".concat(maxWidth * 1.4 * 0.85, "rem"));
         // Set parsed messages and fire event
-        this.parsedContent.setMessages(this.outputMessages);
+        this.messageView.setMessages(this.outputMessages);
         this.outputEvent.fire(this.outputMessages, this.alphabet);
-    }
-}
-
-class StatsWidget {
-    static HTML = `
-        <div class="stats-container">
-        </div>
-    `;
-
-    constructor(parent, inputEvent) {
+    };
+    InputWidget.prototype.setContent = function (input) {
+        var _this = this;
+        // By default set input as comma separated integers
+        this.elementInput.innerHTML = "";
+        input.forEach(function (line) {
+            _this.elementInput.innerHTML += "<div>".concat(line.join(","), "</div> ");
+        });
+        this.rawMessages = this.elementInput.innerText;
+        this.processMessages();
+    };
+    InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img class=\"input-field-icon\" src=\"assets/icon-input.png\">\n            <div class=\"input-field\" contentEditable=\"true\"></div>\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n            <div class=\"input-alphabet use-gaps\"></div>\n        </div>\n    </div>";
+    return InputWidget;
+}());
+var StatsWidget = /** @class */ (function () {
+    function StatsWidget(parent, inputEvent) {
+        var _this = this;
         this.container = new WidgetContainer(parent, "Statistics");
         this.element = createElement(StatsWidget.HTML);
         this.container.addContent(this.element);
-
         // Setup text event listener
-        inputEvent.subscribe((messages, alphabet) => {
-            this.messages = messages;
-            this.alphabet = alphabet;
-            this.recalculateStats();
+        inputEvent.subscribe(function (messages, alphabet) {
+            _this.messages = messages;
+            _this.alphabet = alphabet;
+            _this.recalculateStats();
         });
     }
-
-    recalculateStats() {
+    StatsWidget.prototype.recalculateStats = function () {
         // Calculate stats
         this.calculatedStats = {};
         this.calculatedStats["Alphabet Size"] = this.alphabet.length;
-        let chars = 0;
-        for (let msg = 0; msg < this.messages.length; msg++) chars += this.messages[msg].length;
+        var chars = 0;
+        for (var msg = 0; msg < this.messages.length; msg++)
+            chars += this.messages[msg].length;
         this.calculatedStats["Message Count"] = this.messages.length;
         this.calculatedStats["Total Chars"] = chars;
-
         // Calculate IoC for all + each message
         this.calculatedStats["Total IoC"] = calculateIoC(this.messages, this.alphabet.length);
-        for (let msg = 0; msg < this.messages.length; msg++) {
-            this.calculatedStats[`Msg ${msg}: Chars`] = this.messages[msg].length;
+        for (var msg = 0; msg < this.messages.length; msg++) {
+            this.calculatedStats["Msg ".concat(msg, ": Chars")] = this.messages[msg].length;
         }
-        for (let msg = 0; msg < this.messages.length; msg++) {
-            this.calculatedStats[`Msg ${msg}: IoC`] = calculateIoC([this.messages[msg]], this.alphabet.length);
+        for (var msg = 0; msg < this.messages.length; msg++) {
+            this.calculatedStats["Msg ".concat(msg, ": IoC")] = calculateIoC([this.messages[msg]], this.alphabet.length);
         }
-
         // Turn stats into elements
         this.element.innerHTML = "";
-        for (let stat in this.calculatedStats) {
-            let val = this.calculatedStats[stat];
+        for (var stat in this.calculatedStats) {
+            var val = this.calculatedStats[stat];
             val = Math.round(val * 10000) / 10000;
-            const pair = createElement(`<div class="stats-pair"></div>`);
-            const label = createElement(`<div class="stats-label">${stat}</div>`);
-            const value = createElement(`<div class="stats-value">${val}</div>`);
+            var pair = createElement("<div class=\"stats-pair\"></div>");
+            var label = createElement("<div class=\"stats-label\">".concat(stat, "</div>"));
+            var value = createElement("<div class=\"stats-value\">".concat(val, "</div>"));
             pair.appendChild(label);
             pair.appendChild(value);
             this.element.appendChild(pair);
         }
-    }
-}
-
-class AlignmentWidget {
-    constructor(parent, inputEvent) {
+    };
+    StatsWidget.HTML = "\n        <div class=\"stats-container\">\n        </div>\n    ";
+    return StatsWidget;
+}());
+var AlignmentWidget = /** @class */ (function () {
+    function AlignmentWidget(parent, inputEvent) {
+        var _this = this;
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Alignments");
-        this.messagesContent = new MessagesContent();
-        this.container.addContent(this.messagesContent.element);
-
+        this.messageView = new MessagesView();
+        this.container.addContent(this.messageView.element);
         // Setup toggle gaps button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.messagesContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messagesContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
+        this.toggleSpacingButton = new Button(this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png", function () {
+            _this.messageView.toggleSpacing();
+            _this.toggleSpacingButton.element.src = _this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
-        this.container.addExtra(this.toggleSpacingButton.element);
-
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
         // Setup text event listener
-        inputEvent.subscribe((messages) => {
-            this.messages = messages;
-            this.messagesAlignments = calculateAlignments(messages);
-            this.messagesContent.setMessages(this.messages, this.messagesAlignments);
+        inputEvent.subscribe(function (messages) {
+            _this.messages = messages;
+            _this.messagesAlignments = calculateAlignments(messages);
+            _this.messageView.setMessages(_this.messages, _this.messagesAlignments);
         });
     }
-}
-
-class GapsWidget {
-    constructor(parent, inputEvent, gapLimit = 15) {
-        this.showGaps = false;
-
+    return AlignmentWidget;
+}());
+var GapsWidget = /** @class */ (function () {
+    function GapsWidget(parent, inputEvent, gapLimit) {
+        if (gapLimit === void 0) { gapLimit = 15; }
+        var _this = this;
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Gap Distances");
-        this.messagesContent = new MessagesContent();
-        this.container.addContent(this.messagesContent.element);
+        this.container = new WidgetContainer(parent, "Gap Distances (< " + gapLimit + ")");
+        this.messageView = new MessagesView();
+        this.container.addContent(this.messageView.element);
         this.gapLimit = gapLimit;
-        this.includeEnd = false;
-
         // Setup toggle spacing button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.messagesContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messagesContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
+        this.toggleSpacingButton = new Button(this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png", function () {
+            _this.messageView.toggleSpacing();
+            _this.toggleSpacingButton.element.src = _this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
-        this.container.addExtra(this.toggleSpacingButton.element);
-
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
         // Setup toggle show gaps button
-        this.toggleShowGapsButton = new Button("assets/icon-ruler.png", () => {
-            this.showGaps = !this.showGaps;
-            this.toggleShowGapsButton.element.src = this.showGaps ? "assets/icon-eye.png" : "assets/icon-ruler.png";
-            this.messagesContent.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
+        this.showGaps = false;
+        this.toggleShowGapsButton = new Button("assets/icon-ruler.png", function () {
+            _this.showGaps = !_this.showGaps;
+            _this.toggleShowGapsButton.element.src = _this.showGaps ? "assets/icon-eye.png" : "assets/icon-ruler.png";
+            _this.messageView.setMessages(_this.showGaps ? _this.messagesGaps : _this.messages, _this.messagesGaps);
         });
-        this.container.addExtra(this.toggleShowGapsButton.element);
-
+        this.container.addHeaderExtra(this.toggleShowGapsButton.element);
         // Setup toggle include end button
-        this.toggleIncludeEndButton = new Button("assets/icon-paperclip-on.png", () => {
-            this.includeEnd = !this.includeEnd;
-            this.toggleIncludeEndButton.element.src = this.includeEnd ? "assets/icon-dot.png" : "assets/icon-paperclip-on.png";
-            this.recalculateGaps();
+        this.includeEnd = false;
+        this.toggleIncludeEndButton = new Button("assets/icon-paperclip-on.png", function () {
+            _this.includeEnd = !_this.includeEnd;
+            _this.toggleIncludeEndButton.element.src = _this.includeEnd ? "assets/icon-dot.png" : "assets/icon-paperclip-on.png";
+            _this.recalculateGaps();
         });
-        this.container.addExtra(this.toggleIncludeEndButton.element);
-
+        this.container.addHeaderExtra(this.toggleIncludeEndButton.element);
         // Setup text event listener
-        inputEvent.subscribe((messages) => {
-            this.messages = messages;
-            this.recalculateGaps();
+        inputEvent.subscribe(function (messages) {
+            _this.messages = messages;
+            _this.recalculateGaps();
         });
     }
-
-    recalculateGaps() {
+    GapsWidget.prototype.recalculateGaps = function () {
         this.messagesGaps = calculateGaps(this.messages, this.gapLimit, this.includeEnd);
-
         this.messageGapValues = [];
-        for (let msg = 0; msg < this.messagesGaps.length; msg++) {
+        for (var msg = 0; msg < this.messagesGaps.length; msg++) {
             this.messageGapValues.push([]);
-            for (let col = 0; col < this.messagesGaps[msg].length; col++) {
-                this.messageGapValues[msg].push(
-                    this.messagesGaps[msg][col].length == 0 ? 0 : Math.abs(this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1])
-                );
+            for (var col = 0; col < this.messagesGaps[msg].length; col++) {
+                this.messageGapValues[msg].push(this.messagesGaps[msg][col].length == 0 ? 0 : Math.abs(this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1]));
             }
         }
-
-        this.messagesContent.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
-    }
-}
-
-class FrequencyWidget {
-    static HTML = `
-        <div class='chart-container'>
-            <canvas id="freq-chart"></canvas>
-        </div>
-    `;
-
-    constructor(parent, inputEvent, sorted = false) {
+        this.messageView.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
+    };
+    return GapsWidget;
+}());
+var FrequencyWidget = /** @class */ (function () {
+    function FrequencyWidget(parent, inputEvent, sorted) {
+        if (sorted === void 0) { sorted = false; }
+        var _this = this;
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Letter Frequencies" + (sorted ? " (Sorted)" : ""));
         this.element = createElement(FrequencyWidget.HTML);
         this.elementChart = this.element.querySelector("#freq-chart");
         this.container.addContent(this.element);
         this.sorted = sorted;
-
         // Setup text event listener
-        inputEvent.subscribe((messages) => {
-            this.messages = messages;
-            this.messagesFreq = calculateFrequencies(messages);
-            this.updateChart();
+        inputEvent.subscribe(function (messages) {
+            _this.messages = messages;
+            _this.messagesFreq = calculateFrequencies(messages);
+            _this.updateChart();
         });
     }
-
-    updateChart() {
-        const ctx = this.elementChart.getContext("2d");
-        const keys = Object.keys(this.messagesFreq);
-        if (this.sorted) keys.sort((a, b) => this.messagesFreq[b] - this.messagesFreq[a]);
-        const values = keys.map((key) => this.messagesFreq[key]);
-        const max = Math.max(...values);
-        const colours = keys.map((key) => {
-            const pct = this.messagesFreq[key] / max;
-            return `hsl(214, 40%, ${80 - 60 * pct}%)`;
+    FrequencyWidget.prototype.updateChart = function () {
+        var _this = this;
+        var ctx = this.elementChart.getContext("2d");
+        var keys = Object.keys(this.messagesFreq);
+        if (this.sorted)
+            keys.sort(function (a, b) { return _this.messagesFreq[b] - _this.messagesFreq[a]; });
+        var values = keys.map(function (key) { return _this.messagesFreq[key]; });
+        var max = Math.max.apply(Math, values);
+        var colours = keys.map(function (key) {
+            var pct = _this.messagesFreq[key] / max;
+            return "hsl(214, 40%, ".concat(80 - 60 * pct, "%)");
         });
-        if (this.chart != null) this.chart.destroy();
+        if (this.chart != null)
+            this.chart.destroy();
         this.chart = new Chart(ctx, {
             type: "bar",
             data: {
@@ -819,90 +719,82 @@ class FrequencyWidget {
                 maintainAspectRatio: false,
             },
         });
-    }
-}
-
-class DeltasWidget {
-    constructor(parent, inputEvent) {
+    };
+    FrequencyWidget.HTML = "\n        <div class='chart-container'>\n            <canvas id=\"freq-chart\"></canvas>\n        </div>\n    ";
+    return FrequencyWidget;
+}());
+var DeltasWidget = /** @class */ (function () {
+    function DeltasWidget(parent, inputEvent) {
+        var _this = this;
         this.mod = false;
         this.modSize = 0;
-
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Deltas");
-        this.messagesContent = new MessagesContent("Numeric");
-        this.container.addContent(this.messagesContent.element);
-
+        this.messageView = new MessagesView("Numeric");
+        this.container.addContent(this.messageView.element);
         // Setup toggle gaps button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.messagesContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messagesContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
+        this.toggleSpacingButton = new Button("assets/icon-shrink.png", function () {
+            _this.messageView.toggleSpacing();
+            _this.toggleSpacingButton.element.src = _this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
-        this.container.addExtra(this.toggleSpacingButton.element);
-
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
         // Setup toggle mod button
-        this.toggleModButton = new Button("assets/icon-pct.png", () => {
-            this.mod = !this.mod;
-            this.toggleModButton.element.src = this.mod ? "assets/icon-dot.png" : "assets/icon-pct.png";
-            this.recalculateDeltas();
+        this.toggleModButton = new Button("assets/icon-pct.png", function () {
+            _this.mod = !_this.mod;
+            _this.toggleModButton.element.src = _this.mod ? "assets/icon-dot.png" : "assets/icon-pct.png";
+            _this.recalculateDeltas();
         });
-        this.container.addExtra(this.toggleModButton.element);
-
+        this.container.addHeaderExtra(this.toggleModButton.element);
         // Setup text event listener
-        inputEvent.subscribe((messages, alphabet) => {
-            this.messages = messages;
-            this.modSize = alphabet.length;
-            this.recalculateDeltas();
+        inputEvent.subscribe(function (messages, alphabet) {
+            _this.messages = messages;
+            _this.modSize = alphabet.length;
+            _this.recalculateDeltas();
         });
     }
-
-    recalculateDeltas() {
+    DeltasWidget.prototype.recalculateDeltas = function () {
         this.messagesDeltas = calculateDeltas(this.messages, this.mod ? this.modSize : null);
-
         // Calculate min and max delta
-        let min = Infinity;
-        let max = -Infinity;
-        for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
-            const l = this.messagesDeltas[msg].length;
-            for (let col = 0; col < l; col++) {
+        var min = Infinity;
+        var max = -Infinity;
+        for (var msg = 0; msg < this.messagesDeltas.length; msg++) {
+            var l = this.messagesDeltas[msg].length;
+            for (var col = 0; col < l; col++) {
                 min = Math.min(min, this.messagesDeltas[msg][col]);
                 max = Math.max(max, this.messagesDeltas[msg][col]);
             }
         }
-
         // Calculate highlight values
         this.messagesDeltasHighlight = [];
-        for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
+        for (var msg = 0; msg < this.messagesDeltas.length; msg++) {
             this.messagesDeltasHighlight.push([]);
-            const l = this.messagesDeltas[msg].length;
-            for (let col = 0; col < l; col++) {
-                const val = this.messagesDeltas[msg][col];
-
+            var l = this.messagesDeltas[msg].length;
+            for (var col = 0; col < l; col++) {
+                var val = this.messagesDeltas[msg][col];
                 if (val < 0) {
-                    const pct = val / min;
-                    this.messagesDeltasHighlight[msg].push(`hsl(0, 40%, ${90 - 50 * pct}%)`);
-                } else {
-                    const pct = val / max;
-                    this.messagesDeltasHighlight[msg].push(`hsl(214, 40%, ${90 - 50 * pct}%)`);
+                    var pct = val / min;
+                    this.messagesDeltasHighlight[msg].push("hsl(0, 40%, ".concat(90 - 50 * pct, "%)"));
+                }
+                else {
+                    var pct = val / max;
+                    this.messagesDeltasHighlight[msg].push("hsl(214, 40%, ".concat(90 - 50 * pct, "%)"));
                 }
             }
         }
-
-        this.messagesContent.setMessages(this.messagesDeltas, this.messagesDeltasHighlight);
-    }
-}
-
+        this.messageView.setMessages(this.messagesDeltas, this.messagesDeltasHighlight);
+    };
+    return DeltasWidget;
+}());
 // ------------------------ Driver ------------------------
-
-(() => {
+(function () {
     // Initialize user input
-    const widgetInput = new InputWidget(ELEMENT_MAIN);
-    const widgetStats = new StatsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetShared = new AlignmentWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetGaps = new GapsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetFreqSorted = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent, true);
-    const widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-
+    var widgetInput = new InputWidget(ELEMENT_MAIN);
+    var widgetStats = new StatsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    var widgetShared = new AlignmentWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    var widgetGaps = new GapsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    var widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    var widgetFreqSorted = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent, true);
+    var widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
     // Set initial value
-    widgetInput.setContent(EXAMPLE_MESSAGES, "comma");
+    widgetInput.setContent(EXAMPLE_MESSAGES);
 })();
