@@ -770,7 +770,7 @@ class GapsWidget implements Widget {
     showGaps: boolean;
     messages: Message[];
     messagesGaps: number[][][];
-    messageGapValues: NumberMessage[];
+    messagesGapsValues: NumberMessage[];
 
     constructor(parent: HTMLElement, inputEvent: ListenableEvent, gapLimit: number = 15) {
         // Setup container and put input inside
@@ -789,7 +789,7 @@ class GapsWidget implements Widget {
         // Setup toggle show gaps button
         this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", () => {
             this.showGaps = !this.showGaps;
-            this.messageView.setMessages(this.showGaps ? this.messagesGaps : this.messages, this.messagesGaps);
+            this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
         });
 
         // Setup toggle include end button
@@ -814,33 +814,40 @@ class GapsWidget implements Widget {
         this.messagesGaps = calculateGaps(this.messages, this.gapLimit, this.includeEnd);
 
         // Calculate gap messages for display
-        this.messageGapValues = [];
+        this.messagesGapsValues = [];
         for (let msg = 0; msg < this.messagesGaps.length; msg++) {
-            this.messageGapValues.push([]);
+            this.messagesGapsValues.push([]);
             for (let col = 0; col < this.messagesGaps[msg].length; col++) {
-                this.messageGapValues[msg].push(
+                this.messagesGapsValues[msg].push(
                     this.messagesGaps[msg][col].length == 0 ? 0 : Math.abs(this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1])
                 );
             }
         }
 
         // Set messages based on show gaps
-        this.messageView.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
+        this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
     }
 }
 
-class FrequencyWidget {
+class FrequencyWidget implements Widget {
     static HTML = `
-        <div class='chart-container'>
-            <canvas id="freq-chart"></canvas>
-        </div>
-    `;
+    <div class='chart-container'>
+        <canvas id="freq-chart"></canvas>
+    </div>`;
 
-    constructor(parent, inputEvent, sorted = false) {
+    container: WidgetContainer;
+    element: HTMLElement;
+    elementChart: HTMLCanvasElement;
+    sorted: boolean;
+    messages: Message[];
+    messagesFreq: { [key: string]: number };
+    chart: Chart;
+
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent, sorted: boolean = false) {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Letter Frequencies" + (sorted ? " (Sorted)" : ""));
         this.element = createElement(FrequencyWidget.HTML);
-        this.elementChart = this.element.querySelector("#freq-chart");
+        this.elementChart = this.element.querySelector("#freq-chart") as HTMLCanvasElement;
         this.container.addContent(this.element);
         this.sorted = sorted;
 
@@ -887,29 +894,39 @@ class FrequencyWidget {
     }
 }
 
-class DeltasWidget {
-    constructor(parent, inputEvent) {
+class DeltasWidget implements Widget {
+    container: WidgetContainer;
+    messageView: MessagesView;
+    toggleSpacingButton: ToggleButton;
+    toggleModButton: ToggleButton;
+    mod: boolean;
+    modSize: number;
+    messages: NumberMessage[];
+    messagesDeltas: NumberMessage[];
+    messagesDeltasHighlight: HighlightData;
+
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
         this.mod = false;
         this.modSize = 0;
 
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Deltas");
-        this.messageView = new MessagesView("Numeric");
+        this.messageView = new MessagesView("Colour");
         this.container.addContent(this.messageView.element);
 
         // Setup toggle gaps button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
             this.messageView.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
 
         // Setup toggle mod button
-        this.toggleModButton = new Button("assets/icon-pct.png", () => {
+        this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", () => {
             this.mod = !this.mod;
-            this.toggleModButton.element.src = this.mod ? "assets/icon-dot.png" : "assets/icon-pct.png";
             this.recalculateDeltas();
         });
+
+        // Add elements to container after setup
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
         this.container.addHeaderExtra(this.toggleModButton.element);
 
         // Setup text event listener
@@ -937,19 +954,18 @@ class DeltasWidget {
         // Calculate highlight values
         this.messagesDeltasHighlight = [];
         for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
-            this.messagesDeltasHighlight.push([]);
-            const l = this.messagesDeltas[msg].length;
-            for (let col = 0; col < l; col++) {
+            let highlightRow: string[] = [];
+            for (let col = 0; col < this.messagesDeltas[msg].length; col++) {
                 const val = this.messagesDeltas[msg][col];
-
                 if (val < 0) {
                     const pct = val / min;
-                    this.messagesDeltasHighlight[msg].push(`hsl(0, 40%, ${90 - 50 * pct}%)`);
+                    highlightRow.push(`hsl(0, 40%, ${90 - 50 * pct}%)`);
                 } else {
                     const pct = val / max;
-                    this.messagesDeltasHighlight[msg].push(`hsl(214, 40%, ${90 - 50 * pct}%)`);
+                    highlightRow.push(`hsl(214, 40%, ${90 - 50 * pct}%)`);
                 }
             }
+            // this.messagesDeltasHighlight.push(highlightRow as HighlightData);
         }
 
         this.messageView.setMessages(this.messagesDeltas, this.messagesDeltasHighlight);

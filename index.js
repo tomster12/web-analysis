@@ -635,7 +635,7 @@ var GapsWidget = /** @class */ (function () {
         // Setup toggle show gaps button
         this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", function () {
             _this.showGaps = !_this.showGaps;
-            _this.messageView.setMessages(_this.showGaps ? _this.messagesGaps : _this.messages, _this.messagesGaps);
+            _this.messageView.setMessages(_this.showGaps ? _this.messagesGapsValues : _this.messages, _this.messagesGaps);
         });
         // Setup toggle include end button
         this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", function () {
@@ -655,15 +655,15 @@ var GapsWidget = /** @class */ (function () {
     GapsWidget.prototype.recalculateGaps = function () {
         this.messagesGaps = calculateGaps(this.messages, this.gapLimit, this.includeEnd);
         // Calculate gap messages for display
-        this.messageGapValues = [];
+        this.messagesGapsValues = [];
         for (var msg = 0; msg < this.messagesGaps.length; msg++) {
-            this.messageGapValues.push([]);
+            this.messagesGapsValues.push([]);
             for (var col = 0; col < this.messagesGaps[msg].length; col++) {
-                this.messageGapValues[msg].push(this.messagesGaps[msg][col].length == 0 ? 0 : Math.abs(this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1]));
+                this.messagesGapsValues[msg].push(this.messagesGaps[msg][col].length == 0 ? 0 : Math.abs(this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1]));
             }
         }
         // Set messages based on show gaps
-        this.messageView.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
+        this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
     };
     return GapsWidget;
 }());
@@ -720,7 +720,7 @@ var FrequencyWidget = /** @class */ (function () {
             },
         });
     };
-    FrequencyWidget.HTML = "\n        <div class='chart-container'>\n            <canvas id=\"freq-chart\"></canvas>\n        </div>\n    ";
+    FrequencyWidget.HTML = "\n    <div class='chart-container'>\n        <canvas id=\"freq-chart\"></canvas>\n    </div>";
     return FrequencyWidget;
 }());
 var DeltasWidget = /** @class */ (function () {
@@ -730,20 +730,19 @@ var DeltasWidget = /** @class */ (function () {
         this.modSize = 0;
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Deltas");
-        this.messageView = new MessagesView("Numeric");
+        this.messageView = new MessagesView("Colour");
         this.container.addContent(this.messageView.element);
         // Setup toggle gaps button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", function () {
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
             _this.messageView.toggleSpacing();
-            _this.toggleSpacingButton.element.src = _this.messageView.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
         });
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
         // Setup toggle mod button
-        this.toggleModButton = new Button("assets/icon-pct.png", function () {
+        this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", function () {
             _this.mod = !_this.mod;
-            _this.toggleModButton.element.src = _this.mod ? "assets/icon-dot.png" : "assets/icon-pct.png";
             _this.recalculateDeltas();
         });
+        // Add elements to container after setup
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
         this.container.addHeaderExtra(this.toggleModButton.element);
         // Setup text event listener
         inputEvent.subscribe(function (messages, alphabet) {
@@ -767,19 +766,19 @@ var DeltasWidget = /** @class */ (function () {
         // Calculate highlight values
         this.messagesDeltasHighlight = [];
         for (var msg = 0; msg < this.messagesDeltas.length; msg++) {
-            this.messagesDeltasHighlight.push([]);
-            var l = this.messagesDeltas[msg].length;
-            for (var col = 0; col < l; col++) {
+            var highlightRow = [];
+            for (var col = 0; col < this.messagesDeltas[msg].length; col++) {
                 var val = this.messagesDeltas[msg][col];
                 if (val < 0) {
                     var pct = val / min;
-                    this.messagesDeltasHighlight[msg].push("hsl(0, 40%, ".concat(90 - 50 * pct, "%)"));
+                    highlightRow.push("hsl(0, 40%, ".concat(90 - 50 * pct, "%)"));
                 }
                 else {
                     var pct = val / max;
-                    this.messagesDeltasHighlight[msg].push("hsl(214, 40%, ".concat(90 - 50 * pct, "%)"));
+                    highlightRow.push("hsl(214, 40%, ".concat(90 - 50 * pct, "%)"));
                 }
             }
+            // this.messagesDeltasHighlight.push(highlightRow as HighlightData);
         }
         this.messageView.setMessages(this.messagesDeltas, this.messagesDeltasHighlight);
     };
