@@ -110,7 +110,7 @@ function parseAlphabet(messages) {
         }
     }
     // Either sort numbers or characters
-    var isNum = messages.every(function (line) { return line.every(function (val) { return !isNaN(parseInt(val)); }); });
+    var isNum = messages.some(function (msg) { return msg.some(function (val) { return !isNaN(parseInt(val)); }); });
     if (isNum) {
         return Array.from(alphSet).sort(function (a, b) { return parseInt(a) - parseInt(b); });
     }
@@ -764,23 +764,23 @@ var DeltasWidget = /** @class */ (function () {
             }
         }
         // Calculate highlight values
-        this.messagesDeltasHighlight = [];
+        var messagesDeltasHighlight = [];
         for (var msg = 0; msg < this.messagesDeltas.length; msg++) {
-            var highlightRow = [];
+            messagesDeltasHighlight.push([]);
             for (var col = 0; col < this.messagesDeltas[msg].length; col++) {
                 var val = this.messagesDeltas[msg][col];
                 if (val < 0) {
                     var pct = val / min;
-                    highlightRow.push("hsl(0, 40%, ".concat(90 - 50 * pct, "%)"));
+                    messagesDeltasHighlight[msg].push("hsl(0, 40%, ".concat(90 - 50 * pct, "%)"));
                 }
                 else {
                     var pct = val / max;
-                    highlightRow.push("hsl(214, 40%, ".concat(90 - 50 * pct, "%)"));
+                    messagesDeltasHighlight[msg].push("hsl(214, 40%, ".concat(90 - 50 * pct, "%)"));
                 }
             }
-            // this.messagesDeltasHighlight.push(highlightRow as HighlightData);
         }
-        this.messageView.setMessages(this.messagesDeltas, this.messagesDeltasHighlight);
+        // Set messages based on show gaps
+        this.messageView.setMessages(this.messagesDeltas, messagesDeltasHighlight);
     };
     return DeltasWidget;
 }());

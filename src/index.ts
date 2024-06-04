@@ -69,6 +69,7 @@ let HIGHLIGHTS: string[] = [];
 const HIGHLIGHT_COUNT = 15;
 const HIGHLIGHT_COLOUR_SPIRALS = 4;
 const HIGHLIGHT_COLOUR_GAP = 360 / HIGHLIGHT_COLOUR_SPIRALS;
+
 for (let i = 0; i < HIGHLIGHT_COUNT; i++) {
     let base = (i % HIGHLIGHT_COLOUR_SPIRALS) * HIGHLIGHT_COLOUR_GAP;
     let hue = (base + (i / HIGHLIGHT_COUNT) * HIGHLIGHT_COLOUR_GAP) % 360;
@@ -124,7 +125,7 @@ function parseAlphabet(messages: Message[]): string[] {
     }
 
     // Either sort numbers or characters
-    let isNum = messages.every((line) => line.every((val) => !isNaN(parseInt(val as string))));
+    let isNum = messages.some((msg) => msg.some((val) => !isNaN(parseInt(val))));
     if (isNum) {
         return Array.from(alphSet).sort((a, b) => parseInt(a) - parseInt(b));
     } else {
@@ -860,7 +861,7 @@ class FrequencyWidget implements Widget {
     }
 
     updateChart() {
-        const ctx = this.elementChart.getContext("2d");
+        const ctx = this.elementChart.getContext("2d") as CanvasRenderingContext2D;
         const keys = Object.keys(this.messagesFreq);
         if (this.sorted) keys.sort((a, b) => this.messagesFreq[b] - this.messagesFreq[a]);
         const values = keys.map((key) => this.messagesFreq[key]);
@@ -903,7 +904,6 @@ class DeltasWidget implements Widget {
     modSize: number;
     messages: NumberMessage[];
     messagesDeltas: NumberMessage[];
-    messagesDeltasHighlight: HighlightData;
 
     constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
         this.mod = false;
@@ -952,23 +952,23 @@ class DeltasWidget implements Widget {
         }
 
         // Calculate highlight values
-        this.messagesDeltasHighlight = [];
+        let messagesDeltasHighlight: string[][] = [];
         for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
-            let highlightRow: string[] = [];
+            messagesDeltasHighlight.push([]);
             for (let col = 0; col < this.messagesDeltas[msg].length; col++) {
                 const val = this.messagesDeltas[msg][col];
                 if (val < 0) {
                     const pct = val / min;
-                    highlightRow.push(`hsl(0, 40%, ${90 - 50 * pct}%)`);
+                    messagesDeltasHighlight[msg].push(`hsl(0, 40%, ${90 - 50 * pct}%)`);
                 } else {
                     const pct = val / max;
-                    highlightRow.push(`hsl(214, 40%, ${90 - 50 * pct}%)`);
+                    messagesDeltasHighlight[msg].push(`hsl(214, 40%, ${90 - 50 * pct}%)`);
                 }
             }
-            // this.messagesDeltasHighlight.push(highlightRow as HighlightData);
         }
 
-        this.messageView.setMessages(this.messagesDeltas, this.messagesDeltasHighlight);
+        // Set messages based on show gaps
+        this.messageView.setMessages(this.messagesDeltas, messagesDeltasHighlight);
     }
 }
 
