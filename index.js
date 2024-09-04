@@ -668,16 +668,21 @@ var GapsWidget = /** @class */ (function () {
     return GapsWidget;
 }());
 var FrequencyWidget = /** @class */ (function () {
-    function FrequencyWidget(parent, inputEvent, sorted, title) {
-        if (sorted === void 0) { sorted = false; }
+    function FrequencyWidget(parent, inputEvent, title) {
         if (title === void 0) { title = "Letter Frequencies"; }
         var _this = this;
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, title + (sorted ? " (Sorted)" : ""));
+        this.container = new WidgetContainer(parent, title);
         this.element = createElement(FrequencyWidget.HTML);
         this.elementChart = this.element.querySelector("#freq-chart");
         this.container.addContent(this.element);
-        this.sorted = sorted;
+        this.sorted = false;
+        // Setup toggle sorted button
+        this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-unsorted.png", function () {
+            _this.sorted = !_this.sorted;
+            _this.updateChart();
+        });
+        this.container.addHeaderExtra(this.toggleSortedButton.element);
         // Setup text event listener
         inputEvent.subscribe(function (messages) {
             _this.messages = messages;
@@ -797,9 +802,8 @@ var DeltasWidget = /** @class */ (function () {
     var widgetShared = new AlignmentWidget(ELEMENT_MAIN, widgetInput.outputEvent);
     var widgetGaps = new GapsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
     var widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    var widgetFreqSorted = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent, true);
     var widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    var widgetDeltasFreq = new FrequencyWidget(ELEMENT_MAIN, widgetDeltas.outputEvent, false, "Delta Frequencies");
+    var widgetDeltasFreq = new FrequencyWidget(ELEMENT_MAIN, widgetDeltas.outputEvent, "Delta Frequencies");
     // Set initial value
     widgetInput.setContent(EXAMPLE_MESSAGES);
 })();

@@ -839,18 +839,27 @@ class FrequencyWidget implements Widget {
     container: WidgetContainer;
     element: HTMLElement;
     elementChart: HTMLCanvasElement;
+    toggleSortedButton: ToggleButton;
     sorted: boolean;
     messages: Message[];
     messagesFreq: { [key: string]: number };
     chart: Chart;
 
-    constructor(parent: HTMLElement, inputEvent: ListenableEvent, sorted: boolean = false, title = "Letter Frequencies") {
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent, title = "Letter Frequencies") {
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, title + (sorted ? " (Sorted)" : ""));
+        this.container = new WidgetContainer(parent, title);
         this.element = createElement(FrequencyWidget.HTML);
         this.elementChart = this.element.querySelector("#freq-chart") as HTMLCanvasElement;
         this.container.addContent(this.element);
-        this.sorted = sorted;
+        this.sorted = false;
+
+        // Setup toggle sorted button
+        this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-unsorted.png", () => {
+            this.sorted = !this.sorted;
+            this.updateChart();
+        });
+
+        this.container.addHeaderExtra(this.toggleSortedButton.element);
 
         // Setup text event listener
         inputEvent.subscribe((messages) => {
@@ -988,9 +997,8 @@ class DeltasWidget implements Widget {
     const widgetShared = new AlignmentWidget(ELEMENT_MAIN, widgetInput.outputEvent);
     const widgetGaps = new GapsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
     const widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetFreqSorted = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent, true);
     const widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetDeltasFreq = new FrequencyWidget(ELEMENT_MAIN, widgetDeltas.outputEvent, false, "Delta Frequencies");
+    const widgetDeltasFreq = new FrequencyWidget(ELEMENT_MAIN, widgetDeltas.outputEvent, "Delta Frequencies");
 
     // Set initial value
     widgetInput.setContent(EXAMPLE_MESSAGES);
