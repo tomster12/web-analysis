@@ -844,9 +844,9 @@ class FrequencyWidget implements Widget {
     messagesFreq: { [key: string]: number };
     chart: Chart;
 
-    constructor(parent: HTMLElement, inputEvent: ListenableEvent, sorted: boolean = false) {
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent, sorted: boolean = false, title = "Letter Frequencies") {
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Letter Frequencies" + (sorted ? " (Sorted)" : ""));
+        this.container = new WidgetContainer(parent, title + (sorted ? " (Sorted)" : ""));
         this.element = createElement(FrequencyWidget.HTML);
         this.elementChart = this.element.querySelector("#freq-chart") as HTMLCanvasElement;
         this.container.addContent(this.element);
@@ -904,6 +904,7 @@ class DeltasWidget implements Widget {
     modSize: number;
     messages: NumberMessage[];
     messagesDeltas: NumberMessage[];
+    outputEvent: ListenableEvent;
 
     constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
         this.mod = false;
@@ -935,6 +936,9 @@ class DeltasWidget implements Widget {
             this.modSize = alphabet.length;
             this.recalculateDeltas();
         });
+
+        // Setup output event
+        this.outputEvent = new ListenableEvent();
     }
 
     recalculateDeltas() {
@@ -969,6 +973,9 @@ class DeltasWidget implements Widget {
 
         // Set messages based on show gaps
         this.messageView.setMessages(this.messagesDeltas, messagesDeltasHighlight);
+
+        // Fire output event
+        this.outputEvent.fire(this.messagesDeltas);
     }
 }
 
@@ -983,6 +990,7 @@ class DeltasWidget implements Widget {
     const widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
     const widgetFreqSorted = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent, true);
     const widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    const widgetDeltasFreq = new FrequencyWidget(ELEMENT_MAIN, widgetDeltas.outputEvent, false, "Delta Frequencies");
 
     // Set initial value
     widgetInput.setContent(EXAMPLE_MESSAGES);
