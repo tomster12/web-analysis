@@ -1,4 +1,16 @@
-const ELEMENT_MAIN = document.querySelector(".main");
+// ------------------------ Types ------------------------
+
+type StringMessage = string[];
+type NumberMessage = number[];
+type Message = StringMessage | NumberMessage;
+type DelimType = "comma" | "dot" | "letter" | "space";
+type ConvertOption = "None" | "Int" | "Unique" | "ToAscii" | "FromAscii";
+type HighlightMode = "Categoric" | "Colour";
+type HighlightData = number[][] | number[][][] | string[][] | null;
+
+// ------------------------ Constants ------------------------
+
+const ELEMENT_MAIN = document.querySelector(".main") as HTMLElement;
 
 const EXAMPLE_MESSAGES = [
     [
@@ -53,10 +65,11 @@ const EXAMPLE_MESSAGES = [
     ],
 ];
 
-let HIGHLIGHTS = [];
+let HIGHLIGHTS: string[] = [];
 const HIGHLIGHT_COUNT = 15;
 const HIGHLIGHT_COLOUR_SPIRALS = 4;
 const HIGHLIGHT_COLOUR_GAP = 360 / HIGHLIGHT_COLOUR_SPIRALS;
+
 for (let i = 0; i < HIGHLIGHT_COUNT; i++) {
     let base = (i % HIGHLIGHT_COLOUR_SPIRALS) * HIGHLIGHT_COLOUR_GAP;
     let hue = (base + (i / HIGHLIGHT_COUNT) * HIGHLIGHT_COLOUR_GAP) % 360;
@@ -65,69 +78,64 @@ for (let i = 0; i < HIGHLIGHT_COUNT; i++) {
 
 // ------------------------ Crypto ------------------------
 
-// Messages: char[][]
-function parseMessages(text, delim = ",") {
+function parseMessages(text: string, delimType: DelimType): StringMessage[] {
     if (text == "") return [];
     let lines = text.split("\n");
     lines = lines.filter((line) => line != "");
-    lines = lines.map((line) => line.split(delim));
-    return lines;
+    let delim = delimType == "comma" ? "," : delimType == "dot" ? "." : delimType == "letter" ? "" : " ";
+    return lines.map((line) => line.split(delim));
 }
 
-// Messages: char[][]
-function convertMessages(messages, convertOption) {
-    let converted = [];
-
-    if (convertOption == "Unique") {
-        var uniqueID = 0;
-        var uniqueMap = {};
-    }
+function convertMessages(messages: StringMessage[], convertOption: ConvertOption): Message[] {
+    // Potentially unused variables
+    var uniqueID = 0;
+    var uniqueMap: { [key: string]: number } = {};
 
     // Convert messages based on convertOption
+    let output: Message[] = [];
     for (let msg = 0; msg < messages.length; msg++) {
-        converted.push([]);
-        for (let col = 0; col < messages[msg].length; col++) {
-            const val = messages[msg][col];
-            if (convertOption == "Int") {
-                converted[msg].push(parseInt(val));
-            } else if (convertOption == "Unique") {
-                if (uniqueMap[val] == null) uniqueMap[val] = uniqueID++;
-                converted[msg].push(uniqueMap[val]);
-            } else if (convertOption == "ToAscii") {
-                converted[msg].push(String.fromCharCode(parseInt(val) + 32));
-            } else if (convertOption == "FromAscii") {
-                converted[msg].push(val.charCodeAt(0) - 32);
-            } else {
-                converted[msg].push(val);
-            }
+        if (convertOption == "Int") {
+            output.push(messages[msg].map((val) => parseInt(val)));
+        } else if (convertOption == "Unique") {
+            output.push(
+                messages[msg].map((val) => {
+                    if (uniqueMap[val] == null) uniqueMap[val] = uniqueID++;
+                    return uniqueMap[val];
+                })
+            );
+        } else if (convertOption == "ToAscii") {
+            output.push(messages[msg].map((val) => String.fromCharCode(parseInt(val) + 32)));
+        } else if (convertOption == "FromAscii") {
+            output.push(messages[msg].map((val) => (val.charCodeAt(0) - 32).toString()));
+        } else {
+            output.push(messages[msg]);
+        }
+    }
+    return output;
+}
+
+function parseAlphabet(messages: Message[]): string[] {
+    // Get all unique characters
+    let messagesStr: StringMessage[] = messages as StringMessage[];
+    let alphSet: Set<string> = new Set();
+    for (let msg = 0; msg < messagesStr.length; msg++) {
+        for (let col = 0; col < messagesStr[msg].length; col++) {
+            alphSet.add(messagesStr[msg][col]);
         }
     }
 
-    return converted;
+    // Either sort numbers or characters
+    let isNum = messages.some((msg) => msg.some((val) => !isNaN(parseInt(val))));
+    if (isNum) {
+        return Array.from(alphSet).sort((a, b) => parseInt(a) - parseInt(b));
+    } else {
+        return Array.from(alphSet).sort();
+    }
 }
 
-// Alphabet: Set<char>
-function parseAlphabet(messages) {
-    let alphabet = new Set();
-    for (let msg = 0; msg < messages.length; msg++) {
-        for (let col = 0; col < messages[msg].length; col++) {
-            alphabet.add(messages[msg][col]);
-        }
-    }
-    alphabet = Array.from(alphabet);
-
-    // If all elements are numbers sort
-    if (alphabet.every((char) => !isNaN(char))) {
-        alphabet.sort((a, b) => a - b);
-    }
-
-    return alphabet;
-}
-
-// Shared: int[][]
-function calculateAlignments(messages) {
+function calculateAlignments(messages: Message[]): NumberMessage[] {
     const maxLength = Math.max(...messages.map((line) => line.length));
-    let shared = [];
+    let shared: NumberMessage[] = [];
     for (let i = 0; i < messages.length; i++) shared.push([]);
 
     // For each column in the messages
@@ -139,7 +147,7 @@ function calculateAlignments(messages) {
         // For each message that has this column
         for (let msg = 0; msg < messages.length; msg++) {
             if (col >= messages[msg].length) continue;
-            val = messages[msg][col];
+            let val = messages[msg][col];
 
             // 0 if unique, next ID otherwise
             if (found[val] == null) {
@@ -159,18 +167,13 @@ function calculateAlignments(messages) {
     return shared;
 }
 
-// Gaps: int[][]
-function calculateGaps(messages, gapLimit, includeEnd = false) {
-    let gaps = [];
-
-    // For each message
+function calculateGaps(messages: Message[], gapLimit: number, includeEnd: boolean): number[][][] {
+    let gaps: number[][][] = [];
     for (let msg = 0; msg < messages.length; msg++) {
         gaps.push([]);
-        found = {};
-
-        // For each column in the message
+        let found = {};
         for (let col = 0; col < messages[msg].length; col++) {
-            val = messages[msg][col];
+            let val = messages[msg][col];
             gaps[msg].push([]);
 
             // 0 by default, on gap set start
@@ -189,8 +192,7 @@ function calculateGaps(messages, gapLimit, includeEnd = false) {
     return gaps;
 }
 
-// Frequencies: dict<char, int>
-function calculateFrequencies(messages) {
+function calculateFrequencies(messages: Message[]): { [key: string]: number } {
     let freqs = {};
     for (let msg = 0; msg < messages.length; msg++) {
         for (let col = 0; col < messages[msg].length; col++) {
@@ -202,9 +204,8 @@ function calculateFrequencies(messages) {
     return freqs;
 }
 
-// Deltas: int[][]
-function calculateDeltas(messages, modSize = null) {
-    let deltas = [];
+function calculateDeltas(messages: NumberMessage[], modSize: number | null): NumberMessage[] {
+    let deltas: NumberMessage[] = [];
     for (let msg = 0; msg < messages.length; msg++) {
         deltas.push([]);
         for (let col = 1; col < messages[msg].length; col++) {
@@ -216,62 +217,68 @@ function calculateDeltas(messages, modSize = null) {
     return deltas;
 }
 
-function calculateIoC(messages, alphabetSize) {
+function calculateIoC(messages: Message[], alphabetSize: number): number {
     let freqs = calculateFrequencies(messages);
-
     let total = 0;
     let N = 0;
     for (let char in freqs) {
-        n = freqs[char];
+        const n = freqs[char];
         total += n * (n - 1);
         N += n;
     }
-
     return total / ((N * (N - 1)) / alphabetSize);
 }
 
 // ------------------------ Utility ------------------------
 
-function createElement(html) {
+function createElement(html: string): HTMLElement {
     const element = document.createElement("div");
     element.innerHTML = html.trim();
-    return element.firstChild;
+    return element.firstChild as HTMLElement;
 }
 
 class ListenableEvent {
+    listeners: Function[];
+
     constructor() {
         this.listeners = [];
     }
 
-    subscribe(listener) {
+    subscribe(listener: Function) {
         this.listeners.push(listener);
     }
 
-    fire(...args) {
+    fire(...args: any[]) {
         this.listeners.forEach((listener) => listener(...args));
     }
 }
 
-class MessagesContent {
-    static HTML = `
-        <div class="messages use-gaps"></div>
-    `;
+interface ElementProxy {
+    element: HTMLElement;
+}
 
-    constructor(highlightMode = "Categoric") {
-        // Assert highlightMode
-        if (highlightMode != "Categoric" && highlightMode != "Numeric") {
-            throw new Error("Invalid highlight mode");
-        }
+class MessagesView implements ElementProxy {
+    static HTML = `<div class="messages"></div>`;
 
-        // Setup content variables
+    element: HTMLElement;
+    messages: Message[];
+    highlight: HighlightData;
+    highlightMode: HighlightMode;
+    useSpacing: boolean;
+    cells: HTMLElement[][];
+
+    constructor(highlightMode: HighlightMode = "Categoric") {
+        this.element = createElement(MessagesView.HTML);
         this.messages = [];
-        this.highlight = null;
         this.highlightMode = highlightMode;
-        this.useSpacing = true;
-        this.element = createElement(MessagesContent.HTML);
+        this.useSpacing = false;
     }
 
-    setMessages(messages, highlight = null) {
+    setMessages(messages: Message[], highlight: HighlightData = null) {
+        this.messages = messages;
+        this.element.innerHTML = "";
+        this.cells = [];
+
         // Find fixed width based on maximum character count
         let maxWidth = 0;
         for (let msg = 0; msg < messages.length; msg++) {
@@ -280,12 +287,8 @@ class MessagesContent {
             }
         }
 
-        // Set max width of span with this.element style
+        // Set max width of spans with base element variable
         this.element.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
-
-        this.messages = messages;
-        this.cells = [];
-        this.element.innerHTML = "";
 
         // Create index row
         const row = createElement(`<div class="indices"></div>`);
@@ -302,8 +305,8 @@ class MessagesContent {
             this.cells.push([]);
             for (let col = 0; col < messages[msg].length; col++) {
                 const cell = createElement(`<span>${messages[msg][col]}</span>`);
-                cell.addEventListener("mouseenter", () => this.hoverValue(messages[msg][col]));
-                cell.addEventListener("mouseleave", () => this.unhoverValue(messages[msg][col]));
+                cell.addEventListener("mouseenter", () => this.hoverLetter(messages[msg][col]));
+                cell.addEventListener("mouseleave", () => this.unhoverLetter(messages[msg][col]));
                 row.appendChild(cell);
                 this.cells[msg].push(cell);
             }
@@ -314,42 +317,49 @@ class MessagesContent {
         this.setHighlight(highlight);
     }
 
-    setHighlight(highlight) {
+    setHighlight(highlight: HighlightData) {
         this.highlight = highlight;
         if (highlight == null) return;
 
-        // Highlight every span
+        // Highlight every span based on highlight data and mode
         for (let msg = 0; msg < this.messages.length; msg++) {
             for (let col = 0; col < this.messages[msg].length; col++) {
+                // Categoric: Pick from global colour array
                 if (this.highlightMode == "Categoric") {
-                    let highlight = this.highlight[msg][col];
-                    if (!Array.isArray(highlight)) {
+                    let letterHighlight = highlight[msg][col];
+
+                    if (!Array.isArray(letterHighlight)) {
                         // Categoric: Single value colour
-                        if (highlight > 0) {
-                            var colA = HIGHLIGHTS[Math.abs(highlight - 1) % HIGHLIGHT_COUNT];
+                        letterHighlight = letterHighlight as number;
+                        this.cells[msg][col].title = letterHighlight.toString();
+                        if (letterHighlight > 0) {
+                            const colA = HIGHLIGHTS[Math.abs(letterHighlight - 1) % HIGHLIGHT_COUNT];
                             this.cells[msg][col].style.backgroundColor = colA;
                         }
                     } else {
-                        // Categoric: Allow gradient
-                        var colA = HIGHLIGHTS[Math.abs(highlight[0]) % HIGHLIGHT_COUNT];
-                        if (highlight.length == 1) {
+                        // Categoric: Gradient between two colours
+                        letterHighlight = letterHighlight as number[];
+                        if (letterHighlight.length == 1) {
+                            const colA = HIGHLIGHTS[Math.abs(letterHighlight[0]) % HIGHLIGHT_COUNT];
                             this.cells[msg][col].style.backgroundColor = colA;
-                        } else if (highlight.length == 2) {
-                            const colB = HIGHLIGHTS[Math.abs(highlight[1]) % HIGHLIGHT_COUNT];
+                        } else if (letterHighlight.length == 2) {
+                            const colA = HIGHLIGHTS[Math.abs(letterHighlight[0]) % HIGHLIGHT_COUNT];
+                            const colB = HIGHLIGHTS[Math.abs(letterHighlight[1]) % HIGHLIGHT_COUNT];
                             const style = `linear-gradient(to right, ${colA}, ${colB})`;
                             this.cells[msg][col].style.backgroundImage = style;
                         }
                     }
-                    this.cells[msg][col].title = highlight;
-                } else if (this.highlightMode == "Numeric") {
+                } else {
                     // Numeric: Set highlight as colour
-                    this.cells[msg][col].style.backgroundColor = highlight[msg][col];
+                    let letterHighlight = highlight[msg][col] as string;
+                    this.cells[msg][col].style.backgroundColor = letterHighlight;
                 }
             }
         }
     }
 
-    hoverValue(val) {
+    hoverLetter(val: string | number) {
+        // Highlight all cells with the same value
         this.element.classList.add("cell-hovered");
         for (let msg = 0; msg < this.messages.length; msg++) {
             for (let col = 0; col < this.messages[msg].length; col++) {
@@ -360,7 +370,8 @@ class MessagesContent {
         }
     }
 
-    unhoverValue(val) {
+    unhoverLetter(val: string | number) {
+        // Remove highlight from all cells with the same value
         this.element.classList.remove("cell-hovered");
         for (let msg = 0; msg < this.messages.length; msg++) {
             for (let col = 0; col < this.messages[msg].length; col++) {
@@ -372,56 +383,73 @@ class MessagesContent {
     }
 
     toggleSpacing() {
+        // Toggle spacing and update class
         this.element.classList.toggle("use-gaps");
         this.useSpacing = !this.useSpacing;
     }
 }
 
-class Button {
+class ToggleButton implements ElementProxy {
     static HTML = `<img class="widget-button">`;
 
-    constructor(iconPath, callback) {
-        this.element = createElement(Button.HTML);
-        this.element.src = iconPath;
+    element: HTMLImageElement;
+    clickEvent: ListenableEvent;
+    toggled: boolean;
+
+    constructor(initial: boolean, offIconPath: string, onIconPath, callback: Function) {
+        this.element = createElement(ToggleButton.HTML) as HTMLImageElement;
+        this.element.src = initial ? onIconPath : offIconPath;
 
         // Setup event and listener
         this.clickEvent = new ListenableEvent();
+        this.toggled = initial;
         this.element.addEventListener("click", (e) => {
             e.stopPropagation();
-            this.clickEvent.fire(e);
+            this.toggled = !this.toggled;
+            this.element.classList.toggle("toggled");
+            this.element.src = this.toggled ? onIconPath : offIconPath;
+            this.clickEvent.fire(e, this.toggled);
         });
 
         // Subscribe callback if provided
         if (callback != null) this.clickEvent.subscribe(callback);
     }
+
+    setIcon(iconPath: string) {
+        this.element.src = iconPath;
+    }
 }
 
-class Dropdown {
+class Dropdown implements ElementProxy {
     static HTML = `
-        <div class="dropdown">
-            <img class="dropdown-icon-current"><img class="dropdown-icon-select" src="assets/icon-dropdown.png">
-            <div class="dropdown-options"></div>
-        </div> 
-    `;
+    <div class="dropdown">
+        <img class="dropdown-icon-current"><img class="dropdown-icon-select" src="assets/icon-dropdown.png">
+        <div class="dropdown-options"></div>
+    </div>`;
 
-    constructor(options, initial, callback) {
+    element: HTMLElement;
+    elementIconCurrent: HTMLImageElement;
+    elementIconSelect: HTMLImageElement;
+    elementOptions: HTMLElement;
+    options: { [key: string]: string };
+    selectEvent: ListenableEvent;
+    selected: string;
+
+    constructor(options: { [key: string]: string }, initial: string, callback: Function) {
+        // Setup elements
         this.element = createElement(Dropdown.HTML);
-
-        // Setup variables
-        this.options = options;
-        this.elementIconCurrent = this.element.querySelector(".dropdown-icon-current");
-        this.elementIconSelect = this.element.querySelector(".dropdown-icon-select");
-        this.elementOptions = this.element.querySelector(".dropdown-options");
-
-        // Hide dropdown
+        this.elementIconCurrent = this.element.querySelector(".dropdown-icon-current") as HTMLImageElement;
+        this.elementIconSelect = this.element.querySelector(".dropdown-icon-select") as HTMLImageElement;
+        this.elementOptions = this.element.querySelector(".dropdown-options") as HTMLElement;
         this.elementOptions.style.display = "none";
 
-        // Setup all options
-        for (let option in options) {
-            const optionElement = createElement(`<div>`);
-            const imgElement = createElement(`<img>`);
+        this.options = options;
+        for (let option in this.options) {
+            // Create option element
+            let optionElement = createElement(`<div>`);
+            let imgElement = createElement(`<img>`) as HTMLImageElement;
+            imgElement.src = this.options[option];
             optionElement.appendChild(imgElement);
-            imgElement.src = options[option];
             this.elementOptions.appendChild(optionElement);
 
             // Add event listener
@@ -432,23 +460,20 @@ class Dropdown {
             });
         }
 
-        // Setup event and listener
-        this.selectEvent = new ListenableEvent();
-
-        // Subscribe callback if provided
-        if (callback != null) this.selectEvent.subscribe(callback);
-
-        // Listener on dropdown to open
+        // Toggle dropdown visibility on click
         this.element.addEventListener("click", (e) => {
             e.stopPropagation();
             this.elementOptions.style.display = this.elementOptions.style.display == "none" ? "flex" : "none";
         });
 
-        // Select initial
+        // Setup select event and select initial
+        this.selectEvent = new ListenableEvent();
+        if (callback != null) this.selectEvent.subscribe(callback);
         this.selectOption(initial);
     }
 
-    selectOption(option) {
+    selectOption(option: string) {
+        // Set selected option and update icon
         this.selected = option;
         this.elementIconCurrent.src = this.options[option];
         this.selectEvent.fire(option);
@@ -457,44 +482,51 @@ class Dropdown {
 
 // ------------------------ Widgets ------------------------
 
-class WidgetContainer {
+interface Widget {}
+
+class WidgetContainer implements ElementProxy {
     static HTML = `
-        <div class="widget-container">
-            <div class="widget-header">
-                <div class="widget-title"></div>
-                <div class="widget-extra"></div>
-            </div>
-            <div class="widget-content"></div>
+    <div class="widget-container">
+        <div class="widget-header">
+            <div class="widget-title"></div>
+            <div class="widget-extra"></div>
         </div>
-    `;
+        <div class="widget-content"></div>
+    </div>`;
 
-    constructor(parent, title = "") {
-        this.isClosed = false;
+    element: HTMLElement;
+    elementHeader: HTMLElement;
+    elementTitle: HTMLElement;
+    elementExtra: HTMLElement;
+    elementContent: HTMLElement;
+    isClosed: boolean;
 
+    constructor(parent: HTMLElement | null = null, title: string = "") {
         // Setup container
         this.element = createElement(WidgetContainer.HTML);
-        this.elementHeader = this.element.querySelector(".widget-header");
-        this.elementTitle = this.element.querySelector(".widget-title");
-        this.elementExtra = this.element.querySelector(".widget-extra");
-        this.elementContent = this.element.querySelector(".widget-content");
+        this.elementHeader = this.element.querySelector(".widget-header") as HTMLElement;
+        this.elementTitle = this.element.querySelector(".widget-title") as HTMLElement;
+        this.elementExtra = this.element.querySelector(".widget-extra") as HTMLElement;
+        this.elementContent = this.element.querySelector(".widget-content") as HTMLElement;
         if (parent != null) parent.appendChild(this.element);
 
         // Add title close listener
+        this.isClosed = false;
         this.elementHeader.addEventListener("click", () => this.toggleClosed());
 
         // Set title
         this.setTitle(title);
     }
 
-    addExtra(extra) {
-        this.elementExtra.appendChild(extra);
-    }
-
-    setTitle(title) {
+    setTitle(title: string) {
         this.elementTitle.textContent = title;
     }
 
-    addContent(content) {
+    addHeaderExtra(extra: HTMLElement) {
+        this.elementExtra.appendChild(extra);
+    }
+
+    addContent(content: HTMLElement) {
         this.elementContent.appendChild(content);
     }
 
@@ -505,46 +537,61 @@ class WidgetContainer {
     }
 }
 
-class InputWidget {
+class InputWidget implements Widget {
     static HTML = `
-        <div class="input-container">
-
-            <div class="input-field-container">
-                <img class="input-field-icon" src="assets/icon-input.png">
-                <div class="input-field" contentEditable="true"></div>
-            </div>
-
-            <div class="input-options-container">
-                <p>Delimeter</p>
-                <div class="input-options-delimeter"></div>
-                <p>Convert Mode</p>
-                <div class="input-options-convert"></div>
-            </div>
-
-            <div class="input-parsed"></div>
-
-            <div class="input-alphabet-container">
-                <img src="assets/icon-alphabet.png">
-                <div class="input-alphabet use-gaps"></div>
-            </div>
+    <div class="input-container">
+        <div class="input-field-container">
+            <img class="input-field-icon" src="assets/icon-input.png">
+            <div class="input-field" contentEditable="true"></div>
         </div>
-    `;
 
-    constructor(parent, inputEvent) {
-        this.delimeter = "comma";
-        this.convertOption = "None";
+        <div class="input-options-container">
+            <p>Delimeter</p>
+            <div class="input-options-delimeter"></div>
+            <p>Convert Mode</p>
+            <div class="input-options-convert"></div>
+        </div>
 
-        // Setup full container and grab elements
+        <div class="input-parsed"></div>
+
+        <div class="input-alphabet-container">
+            <img src="assets/icon-alphabet.png">
+            <div class="input-alphabet use-gaps"></div>
+        </div>
+    </div>`;
+
+    container: WidgetContainer;
+    messageView: MessagesView;
+    element: HTMLElement;
+    elementInput: HTMLElement;
+    elementOptionsDelimeter: HTMLElement;
+    elementOptionsConvert: HTMLElement;
+    elementParsed: HTMLElement;
+    elementAlphabet: HTMLElement;
+    delimeterDropdown: Dropdown;
+    convertDropdown: Dropdown;
+    toggleSpacingButton: ToggleButton;
+    delimType: DelimType;
+    convertOption: ConvertOption;
+    rawMessages: string | null;
+    outputMessages: Message[];
+    alphabet: string[];
+    outputEvent: ListenableEvent;
+
+    constructor(parent: HTMLElement) {
+        // Setup main elements
         this.container = new WidgetContainer(parent, "Input Ciphertext");
+        this.messageView = new MessagesView();
         this.element = createElement(InputWidget.HTML);
-        this.elementInput = this.element.querySelector(".input-field");
-        this.elementOptionsDelimeter = this.element.querySelector(".input-options-delimeter");
-        this.elementOptionsConvert = this.element.querySelector(".input-options-convert");
-        this.elementParsed = this.element.querySelector(".input-parsed");
-        this.elementAlphabet = this.element.querySelector(".input-alphabet");
-        this.parsedContent = new MessagesContent();
+        this.elementInput = this.element.querySelector(".input-field") as HTMLElement;
+        this.elementOptionsDelimeter = this.element.querySelector(".input-options-delimeter") as HTMLElement;
+        this.elementOptionsConvert = this.element.querySelector(".input-options-convert") as HTMLElement;
+        this.elementParsed = this.element.querySelector(".input-parsed") as HTMLElement;
+        this.elementAlphabet = this.element.querySelector(".input-alphabet") as HTMLElement;
+        this.elementParsed.appendChild(this.messageView.element);
 
-        // Create dropdowns
+        // Setup dropdown proxies
+        this.delimType = "comma";
         this.delimeterDropdown = new Dropdown(
             {
                 comma: "assets/icon-comma.png",
@@ -553,11 +600,12 @@ class InputWidget {
                 space: "assets/icon-space.png",
             },
             "comma",
-            (delimeter) => {
-                this.delimeter = delimeter;
+            (delimType) => {
+                this.delimType = delimType;
                 this.processMessages();
             }
         );
+        this.convertOption = "None";
         this.convertDropdown = new Dropdown(
             {
                 None: "assets/icon-identity.png",
@@ -573,71 +621,72 @@ class InputWidget {
             }
         );
 
+        // Setup toggle spacing button
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
+            this.messageView.toggleSpacing();
+            this.elementAlphabet.classList.toggle("use-gaps");
+        });
+
         // Add elements to container
         this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
         this.elementOptionsConvert.appendChild(this.convertDropdown.element);
-        this.elementParsed.appendChild(this.parsedContent.element);
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
         this.container.addContent(this.element);
 
-        // Setup toggle gaps button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.parsedContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.parsedContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
-            this.elementAlphabet.classList.toggle("use-gaps");
-        });
-        this.container.addExtra(this.toggleSpacingButton.element);
-
-        // Setup input listeners
+        // Setup input and output events
         this.outputEvent = new ListenableEvent();
         this.elementInput.addEventListener("input", (e) => {
-            this.messages = this.elementInput.innerText;
+            this.rawMessages = this.elementInput.innerText;
             this.processMessages();
         });
     }
 
-    setContent(input) {
-        this.elementInput.innerHTML = "";
-        input.forEach((line) => {
-            this.elementInput.innerHTML += `<div>${line}</div> `;
-        });
-        this.messages = this.elementInput.innerText;
-        this.processMessages();
-    }
-
     processMessages() {
-        if (this.messages == null || this.messages == []) return;
+        if (this.rawMessages == null) return;
 
-        // Parse messages with delimeter, convert based on option
-        let delim = this.delimeter == "comma" ? "," : this.delimeter == "dot" ? "." : this.delimeter == "space" ? " " : "";
-        let parsedMessages = parseMessages(this.messages, delim);
+        // Parse, convert, get alphabet
+        let parsedMessages = parseMessages(this.rawMessages, this.delimType);
         this.outputMessages = convertMessages(parsedMessages, this.convertOption);
-
-        // Parse alphabet and update alphabet output
         this.alphabet = parseAlphabet(this.outputMessages);
-        this.elementAlphabet.innerHTML = "";
-        this.alphabet.forEach((char) => {
-            const span = createElement(`<span>${char}</span>`);
-            this.elementAlphabet.appendChild(span);
-        });
+
+        // Set alphabet elements
         let maxWidth = 0;
-        for (let l = 0; l < this.alphabet.length; l++) {
-            maxWidth = Math.max(maxWidth, this.alphabet[l].toString().length);
-        }
+        this.elementAlphabet.innerHTML = "";
+        this.alphabet.forEach((l) => {
+            this.elementAlphabet.appendChild(createElement(`<span>${l}</span>`));
+            maxWidth = Math.max(maxWidth, l.length);
+        });
         this.elementAlphabet.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
 
         // Set parsed messages and fire event
-        this.parsedContent.setMessages(this.outputMessages);
+        this.messageView.setMessages(this.outputMessages);
         this.outputEvent.fire(this.outputMessages, this.alphabet);
+    }
+
+    setContent(input: number[][]) {
+        // By default set input as comma separated integers
+        this.elementInput.innerHTML = "";
+        input.forEach((line) => {
+            this.elementInput.innerHTML += `<div>${line.join(",")}</div> `;
+        });
+        this.rawMessages = this.elementInput.innerText;
+        this.processMessages();
     }
 }
 
-class StatsWidget {
+class StatsWidget implements Widget {
     static HTML = `
         <div class="stats-container">
         </div>
     `;
 
-    constructor(parent, inputEvent) {
+    container: WidgetContainer;
+    element: HTMLElement;
+    messages: Message[];
+    alphabet: string[];
+    calculatedStats: { [key: string]: number };
+
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
         this.container = new WidgetContainer(parent, "Statistics");
         this.element = createElement(StatsWidget.HTML);
         this.container.addContent(this.element);
@@ -683,62 +732,77 @@ class StatsWidget {
     }
 }
 
-class AlignmentWidget {
-    constructor(parent, inputEvent) {
+class AlignmentWidget implements Widget {
+    container: WidgetContainer;
+    messageView: MessagesView;
+    toggleSpacingButton: ToggleButton;
+    messages: Message[];
+    messagesAlignments: NumberMessage[];
+
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Alignments");
-        this.messagesContent = new MessagesContent();
-        this.container.addContent(this.messagesContent.element);
+        this.messageView = new MessagesView();
+        this.container.addContent(this.messageView.element);
 
         // Setup toggle gaps button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.messagesContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messagesContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
+            this.messageView.toggleSpacing();
         });
-        this.container.addExtra(this.toggleSpacingButton.element);
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
 
         // Setup text event listener
         inputEvent.subscribe((messages) => {
             this.messages = messages;
             this.messagesAlignments = calculateAlignments(messages);
-            this.messagesContent.setMessages(this.messages, this.messagesAlignments);
+            this.messageView.setMessages(this.messages, this.messagesAlignments);
         });
     }
 }
 
-class GapsWidget {
-    constructor(parent, inputEvent, gapLimit = 15) {
-        this.showGaps = false;
+class GapsWidget implements Widget {
+    container: WidgetContainer;
+    messageView: MessagesView;
+    toggleSpacingButton: ToggleButton;
+    toggleShowGapsButton: ToggleButton;
+    toggleIncludeEndButton: ToggleButton;
+    gapLimit: number;
+    includeEnd: boolean;
+    showGaps: boolean;
+    messages: Message[];
+    messagesGaps: number[][][];
+    messagesGapsValues: NumberMessage[];
 
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent, gapLimit: number = 15) {
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Gap Distances");
-        this.messagesContent = new MessagesContent();
-        this.container.addContent(this.messagesContent.element);
+        this.container = new WidgetContainer(parent, "Gap Distances (< " + gapLimit + ")");
+        this.messageView = new MessagesView();
+        this.container.addContent(this.messageView.element);
         this.gapLimit = gapLimit;
+        this.showGaps = false;
         this.includeEnd = false;
 
         // Setup toggle spacing button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.messagesContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messagesContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
+            this.messageView.toggleSpacing();
         });
-        this.container.addExtra(this.toggleSpacingButton.element);
 
         // Setup toggle show gaps button
-        this.toggleShowGapsButton = new Button("assets/icon-ruler.png", () => {
+        this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", () => {
             this.showGaps = !this.showGaps;
-            this.toggleShowGapsButton.element.src = this.showGaps ? "assets/icon-eye.png" : "assets/icon-ruler.png";
-            this.messagesContent.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
+            this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
         });
-        this.container.addExtra(this.toggleShowGapsButton.element);
 
         // Setup toggle include end button
-        this.toggleIncludeEndButton = new Button("assets/icon-paperclip-on.png", () => {
+        this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", () => {
             this.includeEnd = !this.includeEnd;
-            this.toggleIncludeEndButton.element.src = this.includeEnd ? "assets/icon-dot.png" : "assets/icon-paperclip-on.png";
             this.recalculateGaps();
         });
-        this.container.addExtra(this.toggleIncludeEndButton.element);
+
+        // Add elements to container after setup
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
+        this.container.addHeaderExtra(this.toggleShowGapsButton.element);
+        this.container.addHeaderExtra(this.toggleIncludeEndButton.element);
 
         // Setup text event listener
         inputEvent.subscribe((messages) => {
@@ -750,32 +814,41 @@ class GapsWidget {
     recalculateGaps() {
         this.messagesGaps = calculateGaps(this.messages, this.gapLimit, this.includeEnd);
 
-        this.messageGapValues = [];
+        // Calculate gap messages for display
+        this.messagesGapsValues = [];
         for (let msg = 0; msg < this.messagesGaps.length; msg++) {
-            this.messageGapValues.push([]);
+            this.messagesGapsValues.push([]);
             for (let col = 0; col < this.messagesGaps[msg].length; col++) {
-                this.messageGapValues[msg].push(
+                this.messagesGapsValues[msg].push(
                     this.messagesGaps[msg][col].length == 0 ? 0 : Math.abs(this.messagesGaps[msg][col][this.messagesGaps[msg][col].length - 1])
                 );
             }
         }
 
-        this.messagesContent.setMessages(this.showGaps ? this.messageGapValues : this.messages, this.messagesGaps);
+        // Set messages based on show gaps
+        this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
     }
 }
 
-class FrequencyWidget {
+class FrequencyWidget implements Widget {
     static HTML = `
-        <div class='chart-container'>
-            <canvas id="freq-chart"></canvas>
-        </div>
-    `;
+    <div class='chart-container'>
+        <canvas id="freq-chart"></canvas>
+    </div>`;
 
-    constructor(parent, inputEvent, sorted = false) {
+    container: WidgetContainer;
+    element: HTMLElement;
+    elementChart: HTMLCanvasElement;
+    sorted: boolean;
+    messages: Message[];
+    messagesFreq: { [key: string]: number };
+    chart: Chart;
+
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent, sorted: boolean = false, title = "Letter Frequencies") {
         // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Letter Frequencies" + (sorted ? " (Sorted)" : ""));
+        this.container = new WidgetContainer(parent, title + (sorted ? " (Sorted)" : ""));
         this.element = createElement(FrequencyWidget.HTML);
-        this.elementChart = this.element.querySelector("#freq-chart");
+        this.elementChart = this.element.querySelector("#freq-chart") as HTMLCanvasElement;
         this.container.addContent(this.element);
         this.sorted = sorted;
 
@@ -788,7 +861,7 @@ class FrequencyWidget {
     }
 
     updateChart() {
-        const ctx = this.elementChart.getContext("2d");
+        const ctx = this.elementChart.getContext("2d") as CanvasRenderingContext2D;
         const keys = Object.keys(this.messagesFreq);
         if (this.sorted) keys.sort((a, b) => this.messagesFreq[b] - this.messagesFreq[a]);
         const values = keys.map((key) => this.messagesFreq[key]);
@@ -822,30 +895,40 @@ class FrequencyWidget {
     }
 }
 
-class DeltasWidget {
-    constructor(parent, inputEvent) {
+class DeltasWidget implements Widget {
+    container: WidgetContainer;
+    messageView: MessagesView;
+    toggleSpacingButton: ToggleButton;
+    toggleModButton: ToggleButton;
+    mod: boolean;
+    modSize: number;
+    messages: NumberMessage[];
+    messagesDeltas: NumberMessage[];
+    outputEvent: ListenableEvent;
+
+    constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
         this.mod = false;
         this.modSize = 0;
 
         // Setup container and put input inside
         this.container = new WidgetContainer(parent, "Deltas");
-        this.messagesContent = new MessagesContent("Numeric");
-        this.container.addContent(this.messagesContent.element);
+        this.messageView = new MessagesView("Colour");
+        this.container.addContent(this.messageView.element);
 
         // Setup toggle gaps button
-        this.toggleSpacingButton = new Button("assets/icon-shrink.png", () => {
-            this.messagesContent.toggleSpacing();
-            this.toggleSpacingButton.element.src = this.messagesContent.useSpacing ? "assets/icon-shrink.png" : "assets/icon-expand.png";
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
+            this.messageView.toggleSpacing();
         });
-        this.container.addExtra(this.toggleSpacingButton.element);
 
         // Setup toggle mod button
-        this.toggleModButton = new Button("assets/icon-pct.png", () => {
+        this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", () => {
             this.mod = !this.mod;
-            this.toggleModButton.element.src = this.mod ? "assets/icon-dot.png" : "assets/icon-pct.png";
             this.recalculateDeltas();
         });
-        this.container.addExtra(this.toggleModButton.element);
+
+        // Add elements to container after setup
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
+        this.container.addHeaderExtra(this.toggleModButton.element);
 
         // Setup text event listener
         inputEvent.subscribe((messages, alphabet) => {
@@ -853,6 +936,9 @@ class DeltasWidget {
             this.modSize = alphabet.length;
             this.recalculateDeltas();
         });
+
+        // Setup output event
+        this.outputEvent = new ListenableEvent();
     }
 
     recalculateDeltas() {
@@ -870,24 +956,26 @@ class DeltasWidget {
         }
 
         // Calculate highlight values
-        this.messagesDeltasHighlight = [];
+        let messagesDeltasHighlight: string[][] = [];
         for (let msg = 0; msg < this.messagesDeltas.length; msg++) {
-            this.messagesDeltasHighlight.push([]);
-            const l = this.messagesDeltas[msg].length;
-            for (let col = 0; col < l; col++) {
+            messagesDeltasHighlight.push([]);
+            for (let col = 0; col < this.messagesDeltas[msg].length; col++) {
                 const val = this.messagesDeltas[msg][col];
-
                 if (val < 0) {
                     const pct = val / min;
-                    this.messagesDeltasHighlight[msg].push(`hsl(0, 40%, ${90 - 50 * pct}%)`);
+                    messagesDeltasHighlight[msg].push(`hsl(0, 40%, ${90 - 50 * pct}%)`);
                 } else {
                     const pct = val / max;
-                    this.messagesDeltasHighlight[msg].push(`hsl(214, 40%, ${90 - 50 * pct}%)`);
+                    messagesDeltasHighlight[msg].push(`hsl(214, 40%, ${90 - 50 * pct}%)`);
                 }
             }
         }
 
-        this.messagesContent.setMessages(this.messagesDeltas, this.messagesDeltasHighlight);
+        // Set messages based on show gaps
+        this.messageView.setMessages(this.messagesDeltas, messagesDeltasHighlight);
+
+        // Fire output event
+        this.outputEvent.fire(this.messagesDeltas);
     }
 }
 
@@ -902,7 +990,8 @@ class DeltasWidget {
     const widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
     const widgetFreqSorted = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent, true);
     const widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
+    const widgetDeltasFreq = new FrequencyWidget(ELEMENT_MAIN, widgetDeltas.outputEvent, false, "Delta Frequencies");
 
     // Set initial value
-    widgetInput.setContent(EXAMPLE_MESSAGES, "comma");
+    widgetInput.setContent(EXAMPLE_MESSAGES);
 })();
