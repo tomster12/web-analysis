@@ -4,7 +4,7 @@
     "description": "A site for simple analysis, primarily made for the noita eye puzzle.",
     "main": "index.js",
     "scripts": {
-        "dev": "tsc --watch ./src/index.ts --lib dom,es6 --outDir ./public"
+        "dev": "tsc --watch ./index.ts --lib dom,es6"
     },
     "keywords": [],
     "author": "",
