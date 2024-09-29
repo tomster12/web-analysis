@@ -1,4 +1,19 @@
 // ------------------------ Types ------------------------
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        if (typeof b !== "function" && b !== null)
+            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
 // ------------------------ Constants ------------------------
 var ELEMENT_MAIN = document.querySelector(".main");
 var EXAMPLE_MESSAGES = [
@@ -62,6 +77,7 @@ for (var i = 0; i < HIGHLIGHT_COUNT; i++) {
     var hue = (base + (i / HIGHLIGHT_COUNT) * HIGHLIGHT_COLOUR_GAP) % 360;
     HIGHLIGHTS.push("hsl(".concat(hue, ", 75%, 75%)"));
 }
+var WIDGET_MANAGER;
 // ------------------------ Crypto ------------------------
 function parseMessages(text, delimType) {
     if (text == "")
@@ -429,14 +445,32 @@ var Dropdown = /** @class */ (function () {
     Dropdown.HTML = "\n    <div class=\"dropdown\">\n        <img class=\"dropdown-icon-current\"><img class=\"dropdown-icon-select\" src=\"assets/icon-dropdown.png\">\n        <div class=\"dropdown-options\"></div>\n    </div>";
     return Dropdown;
 }());
-var WidgetContainer = /** @class */ (function () {
-    function WidgetContainer(parent, title) {
+// ------------------------ Widgets ------------------------
+var WidgetManager = /** @class */ (function () {
+    function WidgetManager() {
+        this.nextID = 0;
+        this.widgets = {};
+        this.onRemoveWidgetEvent = new ListenableEvent();
+    }
+    WidgetManager.prototype.registerWidget = function (widget) {
+        this.widgets[this.nextID] = widget;
+        return this.nextID++;
+    };
+    WidgetManager.prototype.removeWidget = function (id) {
+        delete this.widgets[id];
+        this.onRemoveWidgetEvent.fire(id);
+    };
+    return WidgetManager;
+}());
+var WidgetFrame = /** @class */ (function () {
+    function WidgetFrame(parent, count, title) {
         if (parent === void 0) { parent = null; }
         if (title === void 0) { title = ""; }
         var _this = this;
         // Setup container
-        this.element = createElement(WidgetContainer.HTML);
+        this.element = createElement(WidgetFrame.HTML);
         this.elementHeader = this.element.querySelector(".widget-header");
+        this.elementID = this.element.querySelector(".widget-id");
         this.elementTitle = this.element.querySelector(".widget-title");
         this.elementExtra = this.element.querySelector(".widget-extra");
         this.elementContent = this.element.querySelector(".widget-content");
@@ -445,42 +479,50 @@ var WidgetContainer = /** @class */ (function () {
         // Add title close listener
         this.isClosed = false;
         this.elementHeader.addEventListener("click", function () { return _this.toggleClosed(); });
-        // Set title
+        // Set element values
+        this.elementID.textContent = count.toString();
         this.setTitle(title);
     }
-    WidgetContainer.prototype.setTitle = function (title) {
+    WidgetFrame.prototype.setTitle = function (title) {
         this.elementTitle.textContent = title;
     };
-    WidgetContainer.prototype.addHeaderExtra = function (extra) {
+    WidgetFrame.prototype.addHeaderExtra = function (extra) {
         this.elementExtra.appendChild(extra);
     };
-    WidgetContainer.prototype.addContent = function (content) {
+    WidgetFrame.prototype.addContent = function (content) {
         this.elementContent.appendChild(content);
     };
-    WidgetContainer.prototype.toggleClosed = function () {
+    WidgetFrame.prototype.toggleClosed = function () {
         this.isClosed = !this.isClosed;
         this.element.classList.toggle("closed");
         this.elementContent.style.display = this.isClosed ? "none" : "block";
     };
-    WidgetContainer.HTML = "\n    <div class=\"widget-container\">\n        <div class=\"widget-header\">\n            <div class=\"widget-title\"></div>\n            <div class=\"widget-extra\"></div>\n        </div>\n        <div class=\"widget-content\"></div>\n    </div>";
-    return WidgetContainer;
+    WidgetFrame.HTML = "\n    <div class=\"widget-container\">\n        <div class=\"widget-header\">\n            <div class=\"widget-id\"></div>\n            <div class=\"widget-title\"></div>\n            <div class=\"widget-extra\"></div>\n        </div>\n        <div class=\"widget-content\"></div>\n    </div>";
+    return WidgetFrame;
 }());
-var InputWidget = /** @class */ (function () {
-    function InputWidget(parent) {
-        var _this = this;
-        // Setup main elements
-        this.container = new WidgetContainer(parent, "Input Ciphertext");
-        this.messageView = new MessagesView();
-        this.element = createElement(InputWidget.HTML);
-        this.elementInput = this.element.querySelector(".input-field");
-        this.elementOptionsDelimeter = this.element.querySelector(".input-options-delimeter");
-        this.elementOptionsConvert = this.element.querySelector(".input-options-convert");
-        this.elementParsed = this.element.querySelector(".input-parsed");
-        this.elementAlphabet = this.element.querySelector(".input-alphabet");
-        this.elementParsed.appendChild(this.messageView.element);
-        // Setup dropdown proxies
-        this.delimType = "comma";
-        this.delimeterDropdown = new Dropdown({
+var Widget = /** @class */ (function () {
+    function Widget(title) {
+        this.id = WIDGET_MANAGER.registerWidget(this);
+        this.container = new WidgetFrame(ELEMENT_MAIN, this.id, title);
+    }
+    return Widget;
+}());
+var InputWidget = /** @class */ (function (_super) {
+    __extends(InputWidget, _super);
+    function InputWidget() {
+        var _this = _super.call(this, "Input") || this;
+        _this.delimType = "comma";
+        _this.convertOption = "None";
+        // Setup elements
+        _this.element = createElement(InputWidget.HTML);
+        _this.elementInput = _this.element.querySelector(".input-field");
+        _this.elementOptionsDelimeter = _this.element.querySelector(".input-options-delimeter");
+        _this.elementOptionsConvert = _this.element.querySelector(".input-options-convert");
+        _this.elementParsed = _this.element.querySelector(".input-parsed");
+        _this.elementAlphabet = _this.element.querySelector(".input-alphabet");
+        _this.messageView = new MessagesView();
+        _this.elementParsed.appendChild(_this.messageView.element);
+        _this.delimeterDropdown = new Dropdown({
             comma: "assets/icon-comma.png",
             dot: "assets/icon-dot.png",
             letter: "assets/icon-a.png",
@@ -489,8 +531,7 @@ var InputWidget = /** @class */ (function () {
             _this.delimType = delimType;
             _this.processMessages();
         });
-        this.convertOption = "None";
-        this.convertDropdown = new Dropdown({
+        _this.convertDropdown = new Dropdown({
             None: "assets/icon-identity.png",
             Int: "assets/icon-123.png",
             Unique: "assets/icon-abacus.png",
@@ -500,22 +541,22 @@ var InputWidget = /** @class */ (function () {
             _this.convertOption = convertOption;
             _this.processMessages();
         });
-        // Setup toggle spacing button
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
+        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
             _this.messageView.toggleSpacing();
             _this.elementAlphabet.classList.toggle("use-gaps");
         });
-        // Add elements to container
-        this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
-        this.elementOptionsConvert.appendChild(this.convertDropdown.element);
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
-        this.container.addContent(this.element);
+        // Add all elements to each other
+        _this.elementOptionsDelimeter.appendChild(_this.delimeterDropdown.element);
+        _this.elementOptionsConvert.appendChild(_this.convertDropdown.element);
+        _this.container.addHeaderExtra(_this.toggleSpacingButton.element);
+        _this.container.addContent(_this.element);
         // Setup input and output events
-        this.outputEvent = new ListenableEvent();
-        this.elementInput.addEventListener("input", function (e) {
+        _this.outputEvent = new ListenableEvent();
+        _this.elementInput.addEventListener("input", function (e) {
             _this.rawMessages = _this.elementInput.innerText;
             _this.processMessages();
         });
+        return _this;
     }
     InputWidget.prototype.processMessages = function () {
         var _this = this;
@@ -535,11 +576,10 @@ var InputWidget = /** @class */ (function () {
         this.elementAlphabet.style.setProperty("--max-width", "".concat(maxWidth * 1.4 * 0.85, "rem"));
         // Set parsed messages and fire event
         this.messageView.setMessages(this.outputMessages);
-        this.outputEvent.fire(this.outputMessages, this.alphabet);
+        this.outputEvent.fire(this.outputMessages);
     };
     InputWidget.prototype.setContent = function (input) {
         var _this = this;
-        // By default set input as comma separated integers
         this.elementInput.innerHTML = "";
         input.forEach(function (line) {
             _this.elementInput.innerHTML += "<div>".concat(line.join(","), "</div> ");
@@ -547,21 +587,29 @@ var InputWidget = /** @class */ (function () {
         this.rawMessages = this.elementInput.innerText;
         this.processMessages();
     };
+    InputWidget.prototype.setSourceWidget = function (widget) {
+        throw new Error("Cannot set source widget for input widget");
+    };
+    InputWidget.prototype.getSourceType = function () {
+        throw new Error("Cannot get source type for input widget");
+    };
+    InputWidget.prototype.getOutputEvent = function () {
+        return this.outputEvent;
+    };
+    InputWidget.prototype.getOutputType = function () {
+        return "Message[]";
+    };
     InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img class=\"input-field-icon\" src=\"assets/icon-input.png\">\n            <div class=\"input-field\" contentEditable=\"true\"></div>\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n            <div class=\"input-alphabet use-gaps\"></div>\n        </div>\n    </div>";
     return InputWidget;
-}());
-var StatsWidget = /** @class */ (function () {
-    function StatsWidget(parent, inputEvent) {
-        var _this = this;
-        this.container = new WidgetContainer(parent, "Statistics");
-        this.element = createElement(StatsWidget.HTML);
-        this.container.addContent(this.element);
-        // Setup text event listener
-        inputEvent.subscribe(function (messages, alphabet) {
-            _this.messages = messages;
-            _this.alphabet = alphabet;
-            _this.recalculateStats();
-        });
+}(Widget));
+var StatsWidget = /** @class */ (function (_super) {
+    __extends(StatsWidget, _super);
+    function StatsWidget() {
+        var _this = _super.call(this, "Statistics") || this;
+        // Setup elements and add to container
+        _this.element = createElement(StatsWidget.HTML);
+        _this.container.addContent(_this.element);
+        return _this;
     }
     StatsWidget.prototype.recalculateStats = function () {
         // Calculate stats
@@ -593,64 +641,92 @@ var StatsWidget = /** @class */ (function () {
             this.element.appendChild(pair);
         }
     };
+    StatsWidget.prototype.setSourceWidget = function (widget) {
+        var _this = this;
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
+        }
+        widget.getOutputEvent().subscribe(function (messages) {
+            _this.messages = messages;
+            _this.alphabet = parseAlphabet(messages);
+            _this.recalculateStats();
+        });
+    };
+    StatsWidget.prototype.getSourceType = function () {
+        return "Message[]";
+    };
+    StatsWidget.prototype.getOutputEvent = function () {
+        throw new Error("Method not implemented.");
+    };
+    StatsWidget.prototype.getOutputType = function () {
+        throw new Error("Method not implemented.");
+    };
     StatsWidget.HTML = "\n        <div class=\"stats-container\">\n        </div>\n    ";
     return StatsWidget;
-}());
-var AlignmentWidget = /** @class */ (function () {
-    function AlignmentWidget(parent, inputEvent) {
-        var _this = this;
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Alignments");
-        this.messageView = new MessagesView();
-        this.container.addContent(this.messageView.element);
-        // Setup toggle gaps button
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
+}(Widget));
+var AlignmentWidget = /** @class */ (function (_super) {
+    __extends(AlignmentWidget, _super);
+    function AlignmentWidget() {
+        var _this = _super.call(this, "Alignments") || this;
+        // Setup elements
+        _this.messageView = new MessagesView();
+        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
             _this.messageView.toggleSpacing();
         });
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
-        // Setup text event listener
-        inputEvent.subscribe(function (messages) {
+        // Add elements to each other
+        _this.container.addContent(_this.messageView.element);
+        _this.container.addHeaderExtra(_this.toggleSpacingButton.element);
+        return _this;
+    }
+    AlignmentWidget.prototype.setSourceWidget = function (widget) {
+        var _this = this;
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
+        }
+        widget.getOutputEvent().subscribe(function (messages) {
             _this.messages = messages;
             _this.messagesAlignments = calculateAlignments(messages);
             _this.messageView.setMessages(_this.messages, _this.messagesAlignments);
         });
-    }
+    };
+    AlignmentWidget.prototype.getSourceType = function () {
+        return "Message[]";
+    };
+    AlignmentWidget.prototype.getOutputEvent = function () {
+        throw new Error("Method not implemented.");
+    };
+    AlignmentWidget.prototype.getOutputType = function () {
+        throw new Error("Method not implemented.");
+    };
     return AlignmentWidget;
-}());
-var GapsWidget = /** @class */ (function () {
-    function GapsWidget(parent, inputEvent, gapLimit) {
+}(Widget));
+var GapsWidget = /** @class */ (function (_super) {
+    __extends(GapsWidget, _super);
+    function GapsWidget(gapLimit) {
         if (gapLimit === void 0) { gapLimit = 15; }
-        var _this = this;
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Gap Distances (< " + gapLimit + ")");
-        this.messageView = new MessagesView();
-        this.container.addContent(this.messageView.element);
-        this.gapLimit = gapLimit;
-        this.showGaps = false;
-        this.includeEnd = false;
-        // Setup toggle spacing button
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
+        var _this = _super.call(this, "Gap Distances (< " + gapLimit + ")") || this;
+        _this.gapLimit = gapLimit;
+        _this.showGaps = false;
+        _this.includeEnd = false;
+        // Setup elements
+        _this.messageView = new MessagesView();
+        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
             _this.messageView.toggleSpacing();
         });
-        // Setup toggle show gaps button
-        this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", function () {
+        _this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", function () {
             _this.showGaps = !_this.showGaps;
             _this.messageView.setMessages(_this.showGaps ? _this.messagesGapsValues : _this.messages, _this.messagesGaps);
         });
-        // Setup toggle include end button
-        this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", function () {
+        _this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", function () {
             _this.includeEnd = !_this.includeEnd;
             _this.recalculateGaps();
         });
-        // Add elements to container after setup
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
-        this.container.addHeaderExtra(this.toggleShowGapsButton.element);
-        this.container.addHeaderExtra(this.toggleIncludeEndButton.element);
-        // Setup text event listener
-        inputEvent.subscribe(function (messages) {
-            _this.messages = messages;
-            _this.recalculateGaps();
-        });
+        // Add elements to each other
+        _this.container.addContent(_this.messageView.element);
+        _this.container.addHeaderExtra(_this.toggleSpacingButton.element);
+        _this.container.addHeaderExtra(_this.toggleShowGapsButton.element);
+        _this.container.addHeaderExtra(_this.toggleIncludeEndButton.element);
+        return _this;
     }
     GapsWidget.prototype.recalculateGaps = function () {
         this.messagesGaps = calculateGaps(this.messages, this.gapLimit, this.includeEnd);
@@ -665,30 +741,44 @@ var GapsWidget = /** @class */ (function () {
         // Set messages based on show gaps
         this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
     };
-    return GapsWidget;
-}());
-var FrequencyWidget = /** @class */ (function () {
-    function FrequencyWidget(parent, inputEvent, title) {
-        if (title === void 0) { title = "Letter Frequencies"; }
+    GapsWidget.prototype.setSourceWidget = function (widget) {
         var _this = this;
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, title);
-        this.element = createElement(FrequencyWidget.HTML);
-        this.elementChart = this.element.querySelector("#freq-chart");
-        this.container.addContent(this.element);
-        this.sorted = false;
-        // Setup toggle sorted button
-        this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-unsorted.png", function () {
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
+        }
+        widget.getOutputEvent().subscribe(function (messages) {
+            _this.messages = messages;
+            _this.recalculateGaps();
+        });
+    };
+    GapsWidget.prototype.getSourceType = function () {
+        return "Message[]";
+    };
+    GapsWidget.prototype.getOutputEvent = function () {
+        throw new Error("Method not implemented.");
+    };
+    GapsWidget.prototype.getOutputType = function () {
+        throw new Error("Method not implemented.");
+    };
+    return GapsWidget;
+}(Widget));
+var FrequencyWidget = /** @class */ (function (_super) {
+    __extends(FrequencyWidget, _super);
+    function FrequencyWidget(title) {
+        if (title === void 0) { title = "Letter Frequencies"; }
+        var _this = _super.call(this, title) || this;
+        _this.sorted = false;
+        // Setup elements
+        _this.element = createElement(FrequencyWidget.HTML);
+        _this.elementChart = _this.element.querySelector("#freq-chart");
+        _this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-unsorted.png", function () {
             _this.sorted = !_this.sorted;
             _this.updateChart();
         });
-        this.container.addHeaderExtra(this.toggleSortedButton.element);
-        // Setup text event listener
-        inputEvent.subscribe(function (messages) {
-            _this.messages = messages;
-            _this.messagesFreq = calculateFrequencies(messages);
-            _this.updateChart();
-        });
+        // Add elements to each other
+        _this.container.addContent(_this.element);
+        _this.container.addHeaderExtra(_this.toggleSortedButton.element);
+        return _this;
     }
     FrequencyWidget.prototype.updateChart = function () {
         var _this = this;
@@ -726,38 +816,51 @@ var FrequencyWidget = /** @class */ (function () {
             },
         });
     };
+    FrequencyWidget.prototype.setSourceWidget = function (widget) {
+        var _this = this;
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
+        }
+        widget.getOutputEvent().subscribe(function (messages) {
+            _this.messages = messages;
+            _this.messagesFreq = calculateFrequencies(messages);
+            _this.updateChart();
+        });
+    };
+    FrequencyWidget.prototype.getSourceType = function () {
+        return "Message[]";
+    };
+    FrequencyWidget.prototype.getOutputEvent = function () {
+        throw new Error("Method not implemented.");
+    };
+    FrequencyWidget.prototype.getOutputType = function () {
+        throw new Error("Method not implemented.");
+    };
     FrequencyWidget.HTML = "\n    <div class='chart-container'>\n        <canvas id=\"freq-chart\"></canvas>\n    </div>";
     return FrequencyWidget;
-}());
-var DeltasWidget = /** @class */ (function () {
-    function DeltasWidget(parent, inputEvent) {
-        var _this = this;
-        this.mod = false;
-        this.modSize = 0;
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Deltas");
-        this.messageView = new MessagesView("Colour");
-        this.container.addContent(this.messageView.element);
-        // Setup toggle gaps button
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
+}(Widget));
+var DeltasWidget = /** @class */ (function (_super) {
+    __extends(DeltasWidget, _super);
+    function DeltasWidget() {
+        var _this = _super.call(this, "Deltas") || this;
+        _this.mod = false;
+        _this.modSize = 0;
+        // Setup elements
+        _this.messageView = new MessagesView("Colour");
+        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
             _this.messageView.toggleSpacing();
         });
-        // Setup toggle mod button
-        this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", function () {
+        _this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", function () {
             _this.mod = !_this.mod;
             _this.recalculateDeltas();
         });
         // Add elements to container after setup
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
-        this.container.addHeaderExtra(this.toggleModButton.element);
-        // Setup text event listener
-        inputEvent.subscribe(function (messages, alphabet) {
-            _this.messages = messages;
-            _this.modSize = alphabet.length;
-            _this.recalculateDeltas();
-        });
+        _this.container.addContent(_this.messageView.element);
+        _this.container.addHeaderExtra(_this.toggleSpacingButton.element);
+        _this.container.addHeaderExtra(_this.toggleModButton.element);
         // Setup output event
-        this.outputEvent = new ListenableEvent();
+        _this.outputEvent = new ListenableEvent();
+        return _this;
     }
     DeltasWidget.prototype.recalculateDeltas = function () {
         this.messagesDeltas = calculateDeltas(this.messages, this.mod ? this.modSize : null);
@@ -792,18 +895,47 @@ var DeltasWidget = /** @class */ (function () {
         // Fire output event
         this.outputEvent.fire(this.messagesDeltas);
     };
+    DeltasWidget.prototype.setSourceWidget = function (widget) {
+        var _this = this;
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
+        }
+        widget.getOutputEvent().subscribe(function (messages) {
+            _this.messages = messages;
+            var alphabet = parseAlphabet(messages);
+            _this.modSize = alphabet.length;
+            _this.recalculateDeltas();
+        });
+    };
+    DeltasWidget.prototype.getSourceType = function () {
+        return "Message[]";
+    };
+    DeltasWidget.prototype.getOutputEvent = function () {
+        return this.outputEvent;
+    };
+    DeltasWidget.prototype.getOutputType = function () {
+        return "Message[]";
+    };
     return DeltasWidget;
-}());
+}(Widget));
 // ------------------------ Driver ------------------------
 (function () {
+    WIDGET_MANAGER = new WidgetManager();
     // Initialize user input
-    var widgetInput = new InputWidget(ELEMENT_MAIN);
-    var widgetStats = new StatsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    var widgetShared = new AlignmentWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    var widgetGaps = new GapsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    var widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    var widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    var widgetDeltasFreq = new FrequencyWidget(ELEMENT_MAIN, widgetDeltas.outputEvent, "Delta Frequencies");
+    var widgetInput = new InputWidget();
+    var widgetStats = new StatsWidget();
+    var widgetShared = new AlignmentWidget();
+    var widgetGaps = new GapsWidget();
+    var widgetFreq = new FrequencyWidget();
+    var widgetDeltas = new DeltasWidget();
+    var widgetDeltasFreq = new FrequencyWidget("Delta Frequencies");
+    // Hook up all widgets
+    widgetStats.setSourceWidget(widgetInput);
+    widgetShared.setSourceWidget(widgetInput);
+    widgetGaps.setSourceWidget(widgetInput);
+    widgetFreq.setSourceWidget(widgetInput);
+    widgetDeltas.setSourceWidget(widgetInput);
+    widgetDeltasFreq.setSourceWidget(widgetDeltas);
     // Set initial value
     widgetInput.setContent(EXAMPLE_MESSAGES);
 })();

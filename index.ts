@@ -66,15 +66,17 @@ const EXAMPLE_MESSAGES = [
 ];
 
 let HIGHLIGHTS: string[] = [];
+
 const HIGHLIGHT_COUNT = 15;
 const HIGHLIGHT_COLOUR_SPIRALS = 4;
 const HIGHLIGHT_COLOUR_GAP = 360 / HIGHLIGHT_COLOUR_SPIRALS;
-
 for (let i = 0; i < HIGHLIGHT_COUNT; i++) {
     let base = (i % HIGHLIGHT_COLOUR_SPIRALS) * HIGHLIGHT_COLOUR_GAP;
     let hue = (base + (i / HIGHLIGHT_COUNT) * HIGHLIGHT_COLOUR_GAP) % 360;
     HIGHLIGHTS.push(`hsl(${hue}, 75%, 75%)`);
 }
+
+let WIDGET_MANAGER;
 
 // ------------------------ Crypto ------------------------
 
@@ -253,11 +255,7 @@ class ListenableEvent {
     }
 }
 
-interface ElementProxy {
-    element: HTMLElement;
-}
-
-class MessagesView implements ElementProxy {
+class MessagesView {
     static HTML = `<div class="messages"></div>`;
 
     element: HTMLElement;
@@ -389,7 +387,7 @@ class MessagesView implements ElementProxy {
     }
 }
 
-class ToggleButton implements ElementProxy {
+class ToggleButton {
     static HTML = `<img class="widget-button">`;
 
     element: HTMLImageElement;
@@ -420,7 +418,7 @@ class ToggleButton implements ElementProxy {
     }
 }
 
-class Dropdown implements ElementProxy {
+class Dropdown {
     static HTML = `
     <div class="dropdown">
         <img class="dropdown-icon-current"><img class="dropdown-icon-select" src="assets/icon-dropdown.png">
@@ -482,12 +480,33 @@ class Dropdown implements ElementProxy {
 
 // ------------------------ Widgets ------------------------
 
-interface Widget {}
+class WidgetManager {
+    nextID: number;
+    widgets: { [key: number]: Widget };
+    onRemoveWidgetEvent: ListenableEvent;
 
-class WidgetContainer implements ElementProxy {
+    constructor() {
+        this.nextID = 0;
+        this.widgets = {};
+        this.onRemoveWidgetEvent = new ListenableEvent();
+    }
+
+    registerWidget(widget: Widget): number {
+        this.widgets[this.nextID] = widget;
+        return this.nextID++;
+    }
+
+    removeWidget(id: number) {
+        delete this.widgets[id];
+        this.onRemoveWidgetEvent.fire(id);
+    }
+}
+
+class WidgetFrame {
     static HTML = `
     <div class="widget-container">
         <div class="widget-header">
+            <div class="widget-id"></div>
             <div class="widget-title"></div>
             <div class="widget-extra"></div>
         </div>
@@ -496,15 +515,17 @@ class WidgetContainer implements ElementProxy {
 
     element: HTMLElement;
     elementHeader: HTMLElement;
+    elementID: HTMLElement;
     elementTitle: HTMLElement;
     elementExtra: HTMLElement;
     elementContent: HTMLElement;
     isClosed: boolean;
 
-    constructor(parent: HTMLElement | null = null, title: string = "") {
+    constructor(parent: HTMLElement | null = null, count: number, title: string = "") {
         // Setup container
-        this.element = createElement(WidgetContainer.HTML);
+        this.element = createElement(WidgetFrame.HTML);
         this.elementHeader = this.element.querySelector(".widget-header") as HTMLElement;
+        this.elementID = this.element.querySelector(".widget-id") as HTMLElement;
         this.elementTitle = this.element.querySelector(".widget-title") as HTMLElement;
         this.elementExtra = this.element.querySelector(".widget-extra") as HTMLElement;
         this.elementContent = this.element.querySelector(".widget-content") as HTMLElement;
@@ -514,7 +535,8 @@ class WidgetContainer implements ElementProxy {
         this.isClosed = false;
         this.elementHeader.addEventListener("click", () => this.toggleClosed());
 
-        // Set title
+        // Set element values
+        this.elementID.textContent = count.toString();
         this.setTitle(title);
     }
 
@@ -537,7 +559,23 @@ class WidgetContainer implements ElementProxy {
     }
 }
 
-class InputWidget implements Widget {
+abstract class Widget {
+    id: number;
+    container: WidgetFrame;
+    sourceWidget: Widget;
+
+    constructor(title: string) {
+        this.id = WIDGET_MANAGER.registerWidget(this);
+        this.container = new WidgetFrame(ELEMENT_MAIN, this.id, title);
+    }
+
+    abstract setSourceWidget(widget: Widget): void;
+    abstract getSourceType(): string;
+    abstract getOutputEvent(): ListenableEvent;
+    abstract getOutputType(): string;
+}
+
+class InputWidget extends Widget {
     static HTML = `
     <div class="input-container">
         <div class="input-field-container">
@@ -560,14 +598,13 @@ class InputWidget implements Widget {
         </div>
     </div>`;
 
-    container: WidgetContainer;
-    messageView: MessagesView;
     element: HTMLElement;
     elementInput: HTMLElement;
     elementOptionsDelimeter: HTMLElement;
     elementOptionsConvert: HTMLElement;
     elementParsed: HTMLElement;
     elementAlphabet: HTMLElement;
+    messageView: MessagesView;
     delimeterDropdown: Dropdown;
     convertDropdown: Dropdown;
     toggleSpacingButton: ToggleButton;
@@ -578,20 +615,20 @@ class InputWidget implements Widget {
     alphabet: string[];
     outputEvent: ListenableEvent;
 
-    constructor(parent: HTMLElement) {
-        // Setup main elements
-        this.container = new WidgetContainer(parent, "Input Ciphertext");
-        this.messageView = new MessagesView();
+    constructor() {
+        super("Input");
+        this.delimType = "comma";
+        this.convertOption = "None";
+
+        // Setup elements
         this.element = createElement(InputWidget.HTML);
         this.elementInput = this.element.querySelector(".input-field") as HTMLElement;
         this.elementOptionsDelimeter = this.element.querySelector(".input-options-delimeter") as HTMLElement;
         this.elementOptionsConvert = this.element.querySelector(".input-options-convert") as HTMLElement;
         this.elementParsed = this.element.querySelector(".input-parsed") as HTMLElement;
         this.elementAlphabet = this.element.querySelector(".input-alphabet") as HTMLElement;
+        this.messageView = new MessagesView();
         this.elementParsed.appendChild(this.messageView.element);
-
-        // Setup dropdown proxies
-        this.delimType = "comma";
         this.delimeterDropdown = new Dropdown(
             {
                 comma: "assets/icon-comma.png",
@@ -605,7 +642,6 @@ class InputWidget implements Widget {
                 this.processMessages();
             }
         );
-        this.convertOption = "None";
         this.convertDropdown = new Dropdown(
             {
                 None: "assets/icon-identity.png",
@@ -620,14 +656,12 @@ class InputWidget implements Widget {
                 this.processMessages();
             }
         );
-
-        // Setup toggle spacing button
         this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
             this.messageView.toggleSpacing();
             this.elementAlphabet.classList.toggle("use-gaps");
         });
 
-        // Add elements to container
+        // Add all elements to each other
         this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
         this.elementOptionsConvert.appendChild(this.convertDropdown.element);
         this.container.addHeaderExtra(this.toggleSpacingButton.element);
@@ -660,11 +694,10 @@ class InputWidget implements Widget {
 
         // Set parsed messages and fire event
         this.messageView.setMessages(this.outputMessages);
-        this.outputEvent.fire(this.outputMessages, this.alphabet);
+        this.outputEvent.fire(this.outputMessages);
     }
 
     setContent(input: number[][]) {
-        // By default set input as comma separated integers
         this.elementInput.innerHTML = "";
         input.forEach((line) => {
             this.elementInput.innerHTML += `<div>${line.join(",")}</div> `;
@@ -672,31 +705,41 @@ class InputWidget implements Widget {
         this.rawMessages = this.elementInput.innerText;
         this.processMessages();
     }
+
+    setSourceWidget(widget: Widget): void {
+        throw new Error("Cannot set source widget for input widget");
+    }
+
+    getSourceType(): string {
+        throw new Error("Cannot get source type for input widget");
+    }
+
+    getOutputEvent(): ListenableEvent {
+        return this.outputEvent;
+    }
+
+    getOutputType(): string {
+        return "Message[]";
+    }
 }
 
-class StatsWidget implements Widget {
+class StatsWidget extends Widget {
     static HTML = `
         <div class="stats-container">
         </div>
     `;
 
-    container: WidgetContainer;
     element: HTMLElement;
     messages: Message[];
     alphabet: string[];
     calculatedStats: { [key: string]: number };
 
-    constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
-        this.container = new WidgetContainer(parent, "Statistics");
+    constructor() {
+        super("Statistics");
+
+        // Setup elements and add to container
         this.element = createElement(StatsWidget.HTML);
         this.container.addContent(this.element);
-
-        // Setup text event listener
-        inputEvent.subscribe((messages, alphabet) => {
-            this.messages = messages;
-            this.alphabet = alphabet;
-            this.recalculateStats();
-        });
     }
 
     recalculateStats() {
@@ -730,38 +773,78 @@ class StatsWidget implements Widget {
             this.element.appendChild(pair);
         }
     }
+
+    setSourceWidget(widget: Widget): void {
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
+        }
+
+        widget.getOutputEvent().subscribe((messages: Message[]) => {
+            this.messages = messages;
+            this.alphabet = parseAlphabet(messages);
+            this.recalculateStats();
+        });
+    }
+
+    getSourceType(): string {
+        return "Message[]";
+    }
+
+    getOutputEvent(): ListenableEvent {
+        throw new Error("Method not implemented.");
+    }
+
+    getOutputType(): string {
+        throw new Error("Method not implemented.");
+    }
 }
 
-class AlignmentWidget implements Widget {
-    container: WidgetContainer;
+class AlignmentWidget extends Widget {
     messageView: MessagesView;
     toggleSpacingButton: ToggleButton;
     messages: Message[];
     messagesAlignments: NumberMessage[];
 
-    constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Alignments");
-        this.messageView = new MessagesView();
-        this.container.addContent(this.messageView.element);
+    constructor() {
+        super("Alignments");
 
-        // Setup toggle gaps button
+        // Setup elements
+        this.messageView = new MessagesView();
         this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
             this.messageView.toggleSpacing();
         });
-        this.container.addHeaderExtra(this.toggleSpacingButton.element);
 
-        // Setup text event listener
-        inputEvent.subscribe((messages) => {
+        // Add elements to each other
+        this.container.addContent(this.messageView.element);
+        this.container.addHeaderExtra(this.toggleSpacingButton.element);
+    }
+
+    setSourceWidget(widget: Widget): void {
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
+        }
+
+        widget.getOutputEvent().subscribe((messages: Message[]) => {
             this.messages = messages;
             this.messagesAlignments = calculateAlignments(messages);
             this.messageView.setMessages(this.messages, this.messagesAlignments);
         });
     }
+
+    getSourceType(): string {
+        return "Message[]";
+    }
+
+    getOutputEvent(): ListenableEvent {
+        throw new Error("Method not implemented.");
+    }
+
+    getOutputType(): string {
+        throw new Error("Method not implemented.");
+    }
 }
 
-class GapsWidget implements Widget {
-    container: WidgetContainer;
+class GapsWidget extends Widget {
     messageView: MessagesView;
     toggleSpacingButton: ToggleButton;
     toggleShowGapsButton: ToggleButton;
@@ -773,42 +856,31 @@ class GapsWidget implements Widget {
     messagesGaps: number[][][];
     messagesGapsValues: NumberMessage[];
 
-    constructor(parent: HTMLElement, inputEvent: ListenableEvent, gapLimit: number = 15) {
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Gap Distances (< " + gapLimit + ")");
-        this.messageView = new MessagesView();
-        this.container.addContent(this.messageView.element);
+    constructor(gapLimit: number = 15) {
+        super("Gap Distances (< " + gapLimit + ")");
         this.gapLimit = gapLimit;
         this.showGaps = false;
         this.includeEnd = false;
 
-        // Setup toggle spacing button
+        // Setup elements
+        this.messageView = new MessagesView();
         this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
             this.messageView.toggleSpacing();
         });
-
-        // Setup toggle show gaps button
         this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", () => {
             this.showGaps = !this.showGaps;
             this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
         });
-
-        // Setup toggle include end button
         this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", () => {
             this.includeEnd = !this.includeEnd;
             this.recalculateGaps();
         });
 
-        // Add elements to container after setup
+        // Add elements to each other
+        this.container.addContent(this.messageView.element);
         this.container.addHeaderExtra(this.toggleSpacingButton.element);
         this.container.addHeaderExtra(this.toggleShowGapsButton.element);
         this.container.addHeaderExtra(this.toggleIncludeEndButton.element);
-
-        // Setup text event listener
-        inputEvent.subscribe((messages) => {
-            this.messages = messages;
-            this.recalculateGaps();
-        });
     }
 
     recalculateGaps() {
@@ -828,15 +900,37 @@ class GapsWidget implements Widget {
         // Set messages based on show gaps
         this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
     }
+
+    setSourceWidget(widget: Widget): void {
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
+        }
+
+        widget.getOutputEvent().subscribe((messages: Message[]) => {
+            this.messages = messages;
+            this.recalculateGaps();
+        });
+    }
+
+    getSourceType(): string {
+        return "Message[]";
+    }
+
+    getOutputEvent(): ListenableEvent {
+        throw new Error("Method not implemented.");
+    }
+
+    getOutputType(): string {
+        throw new Error("Method not implemented.");
+    }
 }
 
-class FrequencyWidget implements Widget {
+class FrequencyWidget extends Widget {
     static HTML = `
     <div class='chart-container'>
         <canvas id="freq-chart"></canvas>
     </div>`;
 
-    container: WidgetContainer;
     element: HTMLElement;
     elementChart: HTMLCanvasElement;
     toggleSortedButton: ToggleButton;
@@ -845,28 +939,21 @@ class FrequencyWidget implements Widget {
     messagesFreq: { [key: string]: number };
     chart: Chart;
 
-    constructor(parent: HTMLElement, inputEvent: ListenableEvent, title = "Letter Frequencies") {
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, title);
-        this.element = createElement(FrequencyWidget.HTML);
-        this.elementChart = this.element.querySelector("#freq-chart") as HTMLCanvasElement;
-        this.container.addContent(this.element);
+    constructor(title = "Letter Frequencies") {
+        super(title);
         this.sorted = false;
 
-        // Setup toggle sorted button
+        // Setup elements
+        this.element = createElement(FrequencyWidget.HTML);
+        this.elementChart = this.element.querySelector("#freq-chart") as HTMLCanvasElement;
         this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-unsorted.png", () => {
             this.sorted = !this.sorted;
             this.updateChart();
         });
 
+        // Add elements to each other
+        this.container.addContent(this.element);
         this.container.addHeaderExtra(this.toggleSortedButton.element);
-
-        // Setup text event listener
-        inputEvent.subscribe((messages) => {
-            this.messages = messages;
-            this.messagesFreq = calculateFrequencies(messages);
-            this.updateChart();
-        });
     }
 
     updateChart() {
@@ -902,10 +989,33 @@ class FrequencyWidget implements Widget {
             },
         });
     }
+
+    setSourceWidget(widget: Widget): void {
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
+        }
+
+        widget.getOutputEvent().subscribe((messages: Message[]) => {
+            this.messages = messages;
+            this.messagesFreq = calculateFrequencies(messages);
+            this.updateChart();
+        });
+    }
+
+    getSourceType(): string {
+        return "Message[]";
+    }
+
+    getOutputEvent(): ListenableEvent {
+        throw new Error("Method not implemented.");
+    }
+
+    getOutputType(): string {
+        throw new Error("Method not implemented.");
+    }
 }
 
-class DeltasWidget implements Widget {
-    container: WidgetContainer;
+class DeltasWidget extends Widget {
     messageView: MessagesView;
     toggleSpacingButton: ToggleButton;
     toggleModButton: ToggleButton;
@@ -915,36 +1025,25 @@ class DeltasWidget implements Widget {
     messagesDeltas: NumberMessage[];
     outputEvent: ListenableEvent;
 
-    constructor(parent: HTMLElement, inputEvent: ListenableEvent) {
+    constructor() {
+        super("Deltas");
         this.mod = false;
         this.modSize = 0;
 
-        // Setup container and put input inside
-        this.container = new WidgetContainer(parent, "Deltas");
+        // Setup elements
         this.messageView = new MessagesView("Colour");
-        this.container.addContent(this.messageView.element);
-
-        // Setup toggle gaps button
         this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
             this.messageView.toggleSpacing();
         });
-
-        // Setup toggle mod button
         this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", () => {
             this.mod = !this.mod;
             this.recalculateDeltas();
         });
 
         // Add elements to container after setup
+        this.container.addContent(this.messageView.element);
         this.container.addHeaderExtra(this.toggleSpacingButton.element);
         this.container.addHeaderExtra(this.toggleModButton.element);
-
-        // Setup text event listener
-        inputEvent.subscribe((messages, alphabet) => {
-            this.messages = messages;
-            this.modSize = alphabet.length;
-            this.recalculateDeltas();
-        });
 
         // Setup output event
         this.outputEvent = new ListenableEvent();
@@ -986,19 +1085,54 @@ class DeltasWidget implements Widget {
         // Fire output event
         this.outputEvent.fire(this.messagesDeltas);
     }
+
+    setSourceWidget(widget: Widget): void {
+        if (widget.getOutputType() != this.getSourceType()) {
+            throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
+        }
+
+        widget.getOutputEvent().subscribe((messages: Message[]) => {
+            this.messages = messages as NumberMessage[];
+            const alphabet = parseAlphabet(messages);
+            this.modSize = alphabet.length;
+            this.recalculateDeltas();
+        });
+    }
+
+    getSourceType(): string {
+        return "Message[]";
+    }
+
+    getOutputEvent(): ListenableEvent {
+        return this.outputEvent;
+    }
+
+    getOutputType(): string {
+        return "Message[]";
+    }
 }
 
 // ------------------------ Driver ------------------------
 
 (() => {
+    WIDGET_MANAGER = new WidgetManager();
+
     // Initialize user input
-    const widgetInput = new InputWidget(ELEMENT_MAIN);
-    const widgetStats = new StatsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetShared = new AlignmentWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetGaps = new GapsWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetFreq = new FrequencyWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetDeltas = new DeltasWidget(ELEMENT_MAIN, widgetInput.outputEvent);
-    const widgetDeltasFreq = new FrequencyWidget(ELEMENT_MAIN, widgetDeltas.outputEvent, "Delta Frequencies");
+    const widgetInput = new InputWidget();
+    const widgetStats = new StatsWidget();
+    const widgetShared = new AlignmentWidget();
+    const widgetGaps = new GapsWidget();
+    const widgetFreq = new FrequencyWidget();
+    const widgetDeltas = new DeltasWidget();
+    const widgetDeltasFreq = new FrequencyWidget("Delta Frequencies");
+
+    // Hook up all widgets
+    widgetStats.setSourceWidget(widgetInput);
+    widgetShared.setSourceWidget(widgetInput);
+    widgetGaps.setSourceWidget(widgetInput);
+    widgetFreq.setSourceWidget(widgetInput);
+    widgetDeltas.setSourceWidget(widgetInput);
+    widgetDeltasFreq.setSourceWidget(widgetDeltas);
 
     // Set initial value
     widgetInput.setContent(EXAMPLE_MESSAGES);
