@@ -17,7 +17,7 @@
 }
 
 :root {
-    font-size: 14px;
+    font-size: 16px;
     font-family: Oxygen;
     color: #232323;
 }
@@ -29,8 +29,8 @@ body {
 
 .header {
     text-align: center;
-    font-size: 1.75rem;
-    margin: 2rem;
+    font-size: 1.7rem;
+    margin: 1.2rem;
 }
 
 hr {
@@ -39,11 +39,24 @@ hr {
 }
 
 .widget-feed {
+    padding: 2rem 1rem;
     display: flex;
     flex-direction: column;
-    gap: 1.4rem;
-    padding: 3rem 1rem;
+    gap: 2rem;
 }
+
+/* @media (min-width: 1750px) {
+    .widget-feed {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .widget-feed > div {
+        width: calc(50% - 10px);
+    }
+} */
 
 /* -------------------- */
 
@@ -112,7 +125,7 @@ hr {
 }
 
 .widget-container.footer-closed {
-    border-bottom: 3px solid #858585;
+    border-bottom: 0.4rem solid #858585;
 }
 
 .widget-container.closed .widget-content {
