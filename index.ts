@@ -928,12 +928,12 @@ class GapsWidget extends Widget {
         this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
             this.messageView.setLetterGapsActive(toggled);
         });
-        this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", () => {
-            this.showGaps = !this.showGaps;
+        this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-ruler.png", (toggled) => {
+            this.showGaps = toggled;
             this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
         });
-        this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", () => {
-            this.includeEnd = !this.includeEnd;
+        this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-paperclip-on.png", (toggled) => {
+            this.includeEnd = toggled;
             this.recalculateGaps();
         });
 
@@ -1007,8 +1007,8 @@ class FrequencyWidget extends Widget {
         // Setup elements
         this.element = createElement(FrequencyWidget.HTML);
         this.elementChart = this.element.querySelector("#freq-chart") as HTMLCanvasElement;
-        this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-unsorted.png", () => {
-            this.sorted = !this.sorted;
+        this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-sorted.png", (toggled) => {
+            this.sorted = toggled;
             this.updateChart();
         });
 
@@ -1096,8 +1096,8 @@ class DeltasWidget extends Widget {
         this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
             this.messageView.setLetterGapsActive(toggled);
         });
-        this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", () => {
-            this.mod = !this.mod;
+        this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-pct.png", (toggled) => {
+            this.mod = toggled;
             this.recalculateDeltas();
         });
 

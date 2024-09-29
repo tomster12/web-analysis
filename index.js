@@ -761,12 +761,12 @@ var GapsWidget = /** @class */ (function (_super) {
         _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
             _this.messageView.setLetterGapsActive(toggled);
         });
-        _this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", function () {
-            _this.showGaps = !_this.showGaps;
+        _this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-ruler.png", function (toggled) {
+            _this.showGaps = toggled;
             _this.messageView.setMessages(_this.showGaps ? _this.messagesGapsValues : _this.messages, _this.messagesGaps);
         });
-        _this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-dot.png", function () {
-            _this.includeEnd = !_this.includeEnd;
+        _this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-paperclip-on.png", function (toggled) {
+            _this.includeEnd = toggled;
             _this.recalculateGaps();
         });
         // Add elements to each other
@@ -819,8 +819,8 @@ var FrequencyWidget = /** @class */ (function (_super) {
         // Setup elements
         _this.element = createElement(FrequencyWidget.HTML);
         _this.elementChart = _this.element.querySelector("#freq-chart");
-        _this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-unsorted.png", function () {
-            _this.sorted = !_this.sorted;
+        _this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-sorted.png", function (toggled) {
+            _this.sorted = toggled;
             _this.updateChart();
         });
         // Add elements to each other
@@ -898,8 +898,8 @@ var DeltasWidget = /** @class */ (function (_super) {
         _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
             _this.messageView.setLetterGapsActive(toggled);
         });
-        _this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", function () {
-            _this.mod = !_this.mod;
+        _this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-pct.png", function (toggled) {
+            _this.mod = toggled;
             _this.recalculateDeltas();
         });
         // Add elements to container after setup

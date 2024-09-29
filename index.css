@@ -86,7 +86,6 @@ hr {
 
 .widget-button-bar {
     display: flex;
-    flex-direction: row-reverse;
     align-items: center;
     gap: 0.5rem;
 }
@@ -383,8 +382,8 @@ hr {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    margin: 2rem;
-    padding: 1rem 2rem;
+    margin: 1rem;
+    padding: 0.6rem 1.5rem;
     background-color: #f7f7f7;
 }
 
@@ -393,10 +392,11 @@ hr {
     flex-direction: row;
     align-items: center;
     margin: 1rem;
-    width: 21rem;
+    margin-right: 5rem;
+    width: 15rem;
 }
 
 .stats-label {
     font-weight: bold;
-    width: 15rem;
+    width: 13rem;
 }
