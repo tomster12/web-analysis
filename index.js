@@ -627,7 +627,7 @@ var InputWidget = /** @class */ (function (_super) {
             _this.convertOption = convertOption;
             _this.processMessages();
         });
-        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
             _this.parsedMessageView.setLetterGapsActive(toggled);
             _this.elementAlphabet.classList.toggle("use-gaps", toggled);
         });
@@ -647,6 +647,7 @@ var InputWidget = /** @class */ (function (_super) {
             _this.rawMessages = _this.elementInput.innerText;
             _this.processMessages();
         });
+        _this.toggleSpacingButton.setToggled(true);
         return _this;
     }
     InputWidget.prototype.processMessages = function () {

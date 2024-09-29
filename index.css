@@ -214,7 +214,7 @@ body {
 
 .toggle-button.glow {
     background-color: #ffffff;
-    box-shadow: 0 0.1rem 0.2rem #676767;
+    box-shadow: 0 0 0.4rem #8f8f8f;
 }
 
 .toggle-button.glow:hover {

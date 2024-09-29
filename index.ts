@@ -779,7 +779,7 @@ class InputWidget extends Widget {
                 this.processMessages();
             }
         );
-        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
             this.parsedMessageView.setLetterGapsActive(toggled);
             this.elementAlphabet.classList.toggle("use-gaps", toggled);
         });
@@ -801,6 +801,8 @@ class InputWidget extends Widget {
             this.rawMessages = this.elementInput.innerText;
             this.processMessages();
         });
+
+        this.toggleSpacingButton.setToggled(true);
     }
 
     processMessages() {
