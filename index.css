@@ -63,6 +63,7 @@ hr {
 .widget-container {
     border-left: none;
     border-right: none;
+    box-shadow: 0 0.2rem 0.7rem #878787;
 }
 
 .widget-header {
