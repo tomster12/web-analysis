@@ -2,6 +2,7 @@
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    min-width: 0;
 }
 
 /* -------------------- */
@@ -125,10 +126,6 @@ hr {
     display: none;
 }
 
-.widget-container.footer-closed {
-    border-bottom: 0.4rem solid #858585;
-}
-
 .widget-container.closed .widget-content {
     display: none;
 }
@@ -146,7 +143,7 @@ hr {
     width: 3rem;
     height: 2.2rem;
     background-color: #cbcbcb;
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
 }
 
 .dropdown:hover {
@@ -182,7 +179,8 @@ hr {
     flex-direction: column;
     background-color: #eeeeee;
     border: 1px solid #878787;
-    border-radius: 0.5rem;
+    border-radius: 0.4rem;
+    z-index: 10;
     box-shadow: 0.1rem 0.1rem 0.3rem #646464;
     overflow: hidden;
 }
@@ -239,15 +237,21 @@ hr {
 /* ------------------- */
 
 .messages {
+    width: fit-content;
+    min-width: 100%;
     background-color: #ffffff;
     padding: 0.6rem;
-    overflow-x: scroll;
     white-space: nowrap;
     font-family: Cousine;
 }
 
+.scrollable-content:has(> .messages) {
+    border-radius: 0.4rem 0.4rem 0 0;
+}
+
 .messages .message {
     width: fit-content;
+    min-width: 100%;
 }
 
 .messages .indices {
@@ -268,7 +272,7 @@ hr {
     padding: 0.2rem;
     width: var(--adjusted-span-width);
     height: 1.8rem;
-    line-height: 1.9rem;
+    line-height: 2rem;
     text-align: center;
     white-space: pre;
     padding: 0.001px;
@@ -286,7 +290,7 @@ hr {
 
 .messages.use-gaps span {
     margin: 0.3rem;
-    border-radius: 0.15rem;
+    border-radius: 0.2rem;
 }
 
 /* -------------------- */
@@ -295,22 +299,23 @@ hr {
     display: flex;
     flex-direction: row;
     margin: 1.2rem;
-    overflow: hidden;
 }
 
-.input-field-icon {
+.input-field-container img {
     height: 1.8rem;
     margin-top: 0.6rem;
     margin-right: 1rem;
 }
 
+.scrollable-content:has(> .input-field) {
+    border-radius: 0.4rem 0.4rem 0 0;
+}
+
 .input-field {
-    flex-grow: 1;
     background-color: #ffffff;
     padding: 0.6rem;
-    border-radius: 0.4rem;
-    overflow: hidden;
-    overflow-x: scroll;
+    width: fit-content;
+    min-width: 100%;
 }
 
 .input-field:focus {
@@ -344,17 +349,21 @@ hr {
 }
 
 .input-alphabet-container img {
-    position: relative;
     height: 1.8rem;
     margin-top: 0.6rem;
     margin-right: 1rem;
 }
 
+.scrollable-content:has(> .input-alphabet) {
+    border-radius: 0.4rem 0.4rem 0 0;
+}
+
 .input-alphabet {
-    padding: 0.6rem;
     background-color: #ffffff;
-    overflow-x: scroll;
+    padding: 0.6rem;
+    width: fit-content;
     white-space: nowrap;
+    min-width: 100%;
     font-family: Cousine;
 }
 
@@ -377,7 +386,7 @@ hr {
 
 .input-alphabet.use-gaps span {
     margin: 0.3rem;
-    border-radius: 0.15rem;
+    border-radius: 0.2rem;
 }
 
 /* -------------------- */
@@ -413,4 +422,42 @@ hr {
 .stats-label {
     font-weight: bold;
     width: 13rem;
+}
+
+/* -------------------- */
+
+.scrollable-div {
+    position: relative;
+    width: 100%;
+    --bar-height: 1rem;
+    --bar-radius: 0.5rem;
+}
+
+.scrollable-div > .scrollable-content {
+    overflow: hidden;
+}
+
+.scrollable-div > .scrollable-bar {
+    position: relative;
+    height: var(--bar-height);
+    background-color: #cdcdcd;
+    border-radius: 0 0 var(--bar-radius) var(--bar-radius);
+    overflow: hidden;
+}
+
+.scrollable-div > .scrollable-bar > .scrollable-thumb {
+    position: absolute;
+    background-color: #787878;
+    height: var(--bar-height);
+    border-radius: var(--bar-height);
+    cursor: pointer;
+    transition: background-color 0.1s;
+}
+
+.scrollable-div > .scrollable-bar > .scrollable-thumb:hover {
+    background-color: #808080;
+}
+
+.scrollable-div > .scrollable-bar > .scrollable-thumb.active {
+    background-color: #8f8f8f;
 }

@@ -249,16 +249,19 @@ var ListenableEvent = /** @class */ (function () {
 var MessagesView = /** @class */ (function () {
     function MessagesView(highlightMode) {
         if (highlightMode === void 0) { highlightMode = "Categoric"; }
-        this.element = createElement(MessagesView.HTML);
+        this.scrollWrapper = new ScrollableDiv();
+        this.element = this.scrollWrapper.element;
+        this.elementContent = createElement(MessagesView.HTML);
         this.messages = [];
         this.highlightMode = highlightMode;
         this.usingLetterGaps = false;
+        this.scrollWrapper.addContent(this.elementContent);
     }
     MessagesView.prototype.setMessages = function (messages, highlight) {
         var _this = this;
         if (highlight === void 0) { highlight = null; }
         this.messages = messages;
-        this.element.innerHTML = "";
+        this.elementContent.innerHTML = "";
         this.cells = [];
         // Find max length of any letter in any message
         var maxLetterLength = 0;
@@ -269,7 +272,7 @@ var MessagesView = /** @class */ (function () {
             }
         }
         // Set max width of letter spans
-        this.element.style.setProperty("--adjusted-span-width", "".concat(1.8 + (maxLetterLength - 1) * 0.2, "rem"));
+        this.elementContent.style.setProperty("--adjusted-span-width", "".concat(0.8 + maxLetterLength * 0.6, "rem"));
         // Create index row
         var row = createElement("<div class=\"indices\"></div>");
         var maxLength = Math.max.apply(Math, messages.map(function (line) { return line.length; }));
@@ -282,7 +285,7 @@ var MessagesView = /** @class */ (function () {
             }
             row.appendChild(cell);
         }
-        this.element.appendChild(row);
+        this.elementContent.appendChild(row);
         var _loop_1 = function (msg) {
             var row_1 = createElement("<div class=\"message\"></div>");
             this_1.cells.push([]);
@@ -297,43 +300,17 @@ var MessagesView = /** @class */ (function () {
             for (var col = 0; col < messages[msg].length; col++) {
                 _loop_2(col);
             }
-            this_1.element.appendChild(row_1);
+            this_1.elementContent.appendChild(row_1);
         };
         var this_1 = this;
         // Create div for each row, span for each cell
         for (var msg = 0; msg < messages.length; msg++) {
             _loop_1(msg);
         }
-        /*
-        // Create index row
-        const row = createElement(`<div class="indices"></div>`);
-        let maxLength = Math.max(...messages.map((line) => line.length));
-        for (let col = 0; col < maxLength; col++) {
-            let letter = col.toString();
-            const cell = createElement(`<span>${letter}</span>`);
-            cell.style.fontSize = `${1 - (letter.length - 1) * 0.2}rem`;
-            row.appendChild(cell);
-        }
-        this.element.appendChild(row);
-
-        // Create div for each row, span for each cell
-        for (let msg = 0; msg < messages.length; msg++) {
-            const row = createElement(`<div class="message"></div>`);
-            this.cells.push([]);
-            for (let col = 0; col < messages[msg].length; col++) {
-                let letter = messages[msg][col].toString();
-                const cell = createElement(`<span>${letter}</span>`);
-                cell.style.fontSize = `${1 - (letter.length - 1) * 0.2}rem`;
-                cell.addEventListener("mouseenter", () => this.hoverLetter(letter));
-                cell.addEventListener("mouseleave", () => this.unhoverLetter(letter));
-                row.appendChild(cell);
-                this.cells[msg].push(cell);
-            }
-            this.element.appendChild(row);
-        }
-        */
         // Highlight letters
         this.setHighlight(highlight);
+        // Update scroller
+        this.scrollWrapper.updateThumbToContent();
     };
     MessagesView.prototype.setHighlight = function (highlight) {
         this.highlight = highlight;
@@ -379,7 +356,7 @@ var MessagesView = /** @class */ (function () {
     };
     MessagesView.prototype.hoverLetter = function (val) {
         // Highlight all cells with the same value
-        this.element.classList.add("cell-hovered");
+        this.elementContent.classList.add("cell-hovered");
         for (var msg = 0; msg < this.messages.length; msg++) {
             for (var col = 0; col < this.messages[msg].length; col++) {
                 if (this.messages[msg][col] == val) {
@@ -390,7 +367,7 @@ var MessagesView = /** @class */ (function () {
     };
     MessagesView.prototype.unhoverLetter = function (val) {
         // Remove highlight from all cells with the same value
-        this.element.classList.remove("cell-hovered");
+        this.elementContent.classList.remove("cell-hovered");
         for (var msg = 0; msg < this.messages.length; msg++) {
             for (var col = 0; col < this.messages[msg].length; col++) {
                 if (this.messages[msg][col] == val) {
@@ -401,7 +378,7 @@ var MessagesView = /** @class */ (function () {
     };
     MessagesView.prototype.setLetterGapsActive = function (isActive) {
         this.usingLetterGaps = isActive;
-        this.element.classList.toggle("use-gaps", this.usingLetterGaps);
+        this.elementContent.classList.toggle("use-gaps", this.usingLetterGaps);
     };
     MessagesView.HTML = "<div class=\"messages\"></div>";
     return MessagesView;
@@ -486,6 +463,64 @@ var Dropdown = /** @class */ (function () {
     Dropdown.HTML = "\n    <div class=\"dropdown\">\n        <img class=\"dropdown-icon-current\"><img class=\"dropdown-icon-select\" src=\"assets/icon-dropdown.png\">\n        <div class=\"dropdown-options\"></div>\n    </div>";
     return Dropdown;
 }());
+var ScrollableDiv = /** @class */ (function () {
+    function ScrollableDiv(className) {
+        if (className === void 0) { className = ""; }
+        var _this = this;
+        // Setup elements
+        this.element = createElement(ScrollableDiv.HTML);
+        this.elementContent = this.element.querySelector(".scrollable-content");
+        this.elementBar = this.element.querySelector(".scrollable-bar");
+        this.elementThumb = this.element.querySelector(".scrollable-thumb");
+        // Add class if provided
+        if (className != "")
+            this.element.classList.add(className);
+        // Setup event listeners
+        this.elementContent.addEventListener("scroll", function () { return _this.updateThumbToContent(); });
+        this.elementContent.addEventListener("input", function () { return _this.updateThumbToContent(); });
+        this.elementContent.addEventListener("wheel", function (e) {
+            e.preventDefault();
+            _this.elementContent.scrollLeft += e.deltaY;
+        });
+        window.addEventListener("resize", function () { return _this.updateThumbToContent(); });
+        window.addEventListener("load", function () { return _this.updateThumbToContent(); });
+        this.elementThumb.addEventListener("mousedown", function (e) {
+            e.preventDefault();
+            _this.elementThumb.classList.add("dragging");
+            var startMouseX = e.clientX;
+            var startThumbScroll = _this.elementThumb.offsetLeft;
+            var onMouseMove = function (e) {
+                var deltaMouseX = e.clientX - startMouseX;
+                var scrollLeftPct = (startThumbScroll + deltaMouseX) / (_this.elementBar.clientWidth - _this.elementThumb.clientWidth);
+                _this.elementContent.scrollLeft = scrollLeftPct * (_this.elementContent.scrollWidth - _this.elementContent.clientWidth);
+            };
+            var onMouseUp = function () {
+                _this.elementThumb.classList.remove("dragging");
+                window.removeEventListener("mousemove", onMouseMove);
+                window.removeEventListener("mouseup", onMouseUp);
+            };
+            window.addEventListener("mousemove", onMouseMove);
+            window.addEventListener("mouseup", onMouseUp);
+        });
+    }
+    ScrollableDiv.prototype.updateThumbToContent = function () {
+        var clientSizeX = this.elementContent.clientWidth;
+        var clientScrollableX = this.elementContent.scrollWidth;
+        var clientScrollX = this.elementContent.scrollLeft;
+        if (clientSizeX >= clientScrollableX) {
+            this.elementThumb.style.display = "none";
+            return;
+        }
+        this.elementThumb.style.display = "block";
+        this.elementThumb.style.width = "".concat((clientSizeX / clientScrollableX) * 100, "%");
+        this.elementThumb.style.left = "".concat((clientScrollX / clientScrollableX) * 100, "%");
+    };
+    ScrollableDiv.prototype.addContent = function (content) {
+        this.elementContent.appendChild(content);
+    };
+    ScrollableDiv.HTML = "\n    <div class=\"scrollable-div\">\n        <div class=\"scrollable-content\"></div>\n        <div class=\"scrollable-bar\">\n            <div class=\"scrollable-thumb\"</div>\n        </div>\n    </div>";
+    return ScrollableDiv;
+}());
 // ------------------------ Widgets ------------------------
 var WidgetManager = /** @class */ (function () {
     function WidgetManager() {
@@ -563,12 +598,16 @@ var InputWidget = /** @class */ (function (_super) {
         _this.convertOption = "None";
         // Setup elements
         _this.element = createElement(InputWidget.HTML);
-        _this.elementInput = _this.element.querySelector(".input-field");
+        _this.elementInputFieldContainer = _this.element.querySelector(".input-field-container");
+        _this.elementInputScrollable = new ScrollableDiv("input-field-scrollable");
+        _this.elementInput = createElement("<div class=\"input-field\" contentEditable=\"true\"></div>");
         _this.elementOptionsDelimeter = _this.element.querySelector(".input-options-delimeter");
         _this.elementOptionsConvert = _this.element.querySelector(".input-options-convert");
         _this.elementParsedContainer = _this.element.querySelector(".input-parsed-container");
-        _this.elementAlphabet = _this.element.querySelector(".input-alphabet");
-        _this.messageView = new MessagesView();
+        _this.parsedMessageView = new MessagesView();
+        _this.elementAlphabetContainer = _this.element.querySelector(".input-alphabet-container");
+        _this.elementAlphabetScrollable = new ScrollableDiv("input-alphabet-scrollable");
+        _this.elementAlphabet = createElement("<div class=\"input-alphabet\"></div>");
         _this.delimeterDropdown = new Dropdown({
             comma: "assets/icon-comma.png",
             dot: "assets/icon-dot.png",
@@ -589,11 +628,15 @@ var InputWidget = /** @class */ (function (_super) {
             _this.processMessages();
         });
         _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
-            _this.messageView.setLetterGapsActive(toggled);
+            _this.parsedMessageView.setLetterGapsActive(toggled);
             _this.elementAlphabet.classList.toggle("use-gaps", toggled);
         });
         // Add all elements to each other
-        _this.elementParsedContainer.appendChild(_this.messageView.element);
+        _this.elementInputFieldContainer.appendChild(_this.elementInputScrollable.element);
+        _this.elementInputScrollable.addContent(_this.elementInput);
+        _this.elementAlphabetContainer.appendChild(_this.elementAlphabetScrollable.element);
+        _this.elementAlphabetScrollable.addContent(_this.elementAlphabet);
+        _this.elementParsedContainer.appendChild(_this.parsedMessageView.element);
         _this.elementOptionsDelimeter.appendChild(_this.delimeterDropdown.element);
         _this.elementOptionsConvert.appendChild(_this.convertDropdown.element);
         _this.container.addHeaderExtra(_this.toggleSpacingButton.element);
@@ -623,8 +666,10 @@ var InputWidget = /** @class */ (function (_super) {
         });
         this.elementAlphabet.style.setProperty("--max-width", "".concat(maxWidth * 0.85, "rem"));
         // Set parsed messages and fire event
-        this.messageView.setMessages(this.outputMessages);
+        this.parsedMessageView.setMessages(this.outputMessages);
         this.outputEvent.fire(this.outputMessages);
+        // Update alphabet scroller
+        this.elementAlphabetScrollable.updateThumbToContent();
     };
     InputWidget.prototype.setContent = function (input) {
         var _this = this;
@@ -647,7 +692,7 @@ var InputWidget = /** @class */ (function (_super) {
     InputWidget.prototype.getOutputType = function () {
         return "Message[]";
     };
-    InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img class=\"input-field-icon\" src=\"assets/icon-input.png\">\n            <div class=\"input-field\" contentEditable=\"true\"></div>\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed-container\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n            <div class=\"input-alphabet\"></div>\n        </div>\n    </div>";
+    InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img src=\"assets/icon-input.png\">\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed-container\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n        </div>\n    </div>";
     return InputWidget;
 }(Widget));
 var StatsWidget = /** @class */ (function (_super) {

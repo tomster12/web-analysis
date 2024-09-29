@@ -258,7 +258,9 @@ class ListenableEvent {
 class MessagesView {
     static HTML = `<div class="messages"></div>`;
 
+    scrollWrapper: ScrollableDiv;
     element: HTMLElement;
+    elementContent: HTMLElement;
     messages: Message[];
     highlight: HighlightData;
     highlightMode: HighlightMode;
@@ -266,15 +268,18 @@ class MessagesView {
     cells: HTMLElement[][];
 
     constructor(highlightMode: HighlightMode = "Categoric") {
-        this.element = createElement(MessagesView.HTML);
+        this.scrollWrapper = new ScrollableDiv();
+        this.element = this.scrollWrapper.element;
+        this.elementContent = createElement(MessagesView.HTML);
         this.messages = [];
         this.highlightMode = highlightMode;
         this.usingLetterGaps = false;
+        this.scrollWrapper.addContent(this.elementContent);
     }
 
     setMessages(messages: Message[], highlight: HighlightData = null) {
         this.messages = messages;
-        this.element.innerHTML = "";
+        this.elementContent.innerHTML = "";
         this.cells = [];
 
         // Find max length of any letter in any message
@@ -287,7 +292,7 @@ class MessagesView {
         }
 
         // Set max width of letter spans
-        this.element.style.setProperty("--adjusted-span-width", `${1.8 + (maxLetterLength - 1) * 0.2}rem`);
+        this.elementContent.style.setProperty("--adjusted-span-width", `${0.8 + maxLetterLength * 0.6}rem`);
 
         // Create index row
         const row = createElement(`<div class="indices"></div>`);
@@ -301,7 +306,7 @@ class MessagesView {
             }
             row.appendChild(cell);
         }
-        this.element.appendChild(row);
+        this.elementContent.appendChild(row);
 
         // Create div for each row, span for each cell
         for (let msg = 0; msg < messages.length; msg++) {
@@ -315,40 +320,14 @@ class MessagesView {
                 row.appendChild(cell);
                 this.cells[msg].push(cell);
             }
-            this.element.appendChild(row);
+            this.elementContent.appendChild(row);
         }
-
-        /*
-        // Create index row
-        const row = createElement(`<div class="indices"></div>`);
-        let maxLength = Math.max(...messages.map((line) => line.length));
-        for (let col = 0; col < maxLength; col++) {
-            let letter = col.toString();
-            const cell = createElement(`<span>${letter}</span>`);
-            cell.style.fontSize = `${1 - (letter.length - 1) * 0.2}rem`;
-            row.appendChild(cell);
-        }
-        this.element.appendChild(row);
-
-        // Create div for each row, span for each cell
-        for (let msg = 0; msg < messages.length; msg++) {
-            const row = createElement(`<div class="message"></div>`);
-            this.cells.push([]);
-            for (let col = 0; col < messages[msg].length; col++) {
-                let letter = messages[msg][col].toString();
-                const cell = createElement(`<span>${letter}</span>`);
-                cell.style.fontSize = `${1 - (letter.length - 1) * 0.2}rem`;
-                cell.addEventListener("mouseenter", () => this.hoverLetter(letter));
-                cell.addEventListener("mouseleave", () => this.unhoverLetter(letter));
-                row.appendChild(cell);
-                this.cells[msg].push(cell);
-            }
-            this.element.appendChild(row);
-        }
-        */
 
         // Highlight letters
         this.setHighlight(highlight);
+
+        // Update scroller
+        this.scrollWrapper.updateThumbToContent();
     }
 
     setHighlight(highlight: HighlightData) {
@@ -394,7 +373,7 @@ class MessagesView {
 
     hoverLetter(val: string | number) {
         // Highlight all cells with the same value
-        this.element.classList.add("cell-hovered");
+        this.elementContent.classList.add("cell-hovered");
         for (let msg = 0; msg < this.messages.length; msg++) {
             for (let col = 0; col < this.messages[msg].length; col++) {
                 if (this.messages[msg][col] == val) {
@@ -406,7 +385,7 @@ class MessagesView {
 
     unhoverLetter(val: string | number) {
         // Remove highlight from all cells with the same value
-        this.element.classList.remove("cell-hovered");
+        this.elementContent.classList.remove("cell-hovered");
         for (let msg = 0; msg < this.messages.length; msg++) {
             for (let col = 0; col < this.messages[msg].length; col++) {
                 if (this.messages[msg][col] == val) {
@@ -418,7 +397,7 @@ class MessagesView {
 
     setLetterGapsActive(isActive: boolean) {
         this.usingLetterGaps = isActive;
-        this.element.classList.toggle("use-gaps", this.usingLetterGaps);
+        this.elementContent.classList.toggle("use-gaps", this.usingLetterGaps);
     }
 }
 
@@ -523,6 +502,84 @@ class Dropdown {
         this.selected = option;
         this.elementIconCurrent.src = this.options[option];
         this.selectEvent.fire(option);
+    }
+}
+
+class ScrollableDiv {
+    static HTML = `
+    <div class="scrollable-div">
+        <div class="scrollable-content"></div>
+        <div class="scrollable-bar">
+            <div class="scrollable-thumb"</div>
+        </div>
+    </div>`;
+
+    element: HTMLElement;
+    elementContent: HTMLElement;
+    elementBar: HTMLElement;
+    elementThumb: HTMLElement;
+
+    constructor(className: string = "") {
+        // Setup elements
+        this.element = createElement(ScrollableDiv.HTML);
+        this.elementContent = this.element.querySelector(".scrollable-content") as HTMLElement;
+        this.elementBar = this.element.querySelector(".scrollable-bar") as HTMLElement;
+        this.elementThumb = this.element.querySelector(".scrollable-thumb") as HTMLElement;
+
+        // Add class if provided
+        if (className != "") this.element.classList.add(className);
+
+        // Setup event listeners
+        this.elementContent.addEventListener("scroll", () => this.updateThumbToContent());
+        this.elementContent.addEventListener("input", () => this.updateThumbToContent());
+        this.elementContent.addEventListener("wheel", (e) => {
+            e.preventDefault();
+            this.elementContent.scrollLeft += e.deltaY;
+        });
+        window.addEventListener("resize", () => this.updateThumbToContent());
+        window.addEventListener("load", () => this.updateThumbToContent());
+
+        this.elementThumb.addEventListener("mousedown", (e) => {
+            e.preventDefault();
+            this.elementThumb.classList.add("dragging");
+            const startMouseX = e.clientX;
+            const startThumbScroll = this.elementThumb.offsetLeft;
+
+            const onMouseMove = (e) => {
+                const deltaMouseX = e.clientX - startMouseX;
+                const scrollLeftPct = (startThumbScroll + deltaMouseX) / (this.elementBar.clientWidth - this.elementThumb.clientWidth);
+                this.elementContent.scrollLeft = scrollLeftPct * (this.elementContent.scrollWidth - this.elementContent.clientWidth);
+            };
+
+            const onMouseUp = () => {
+                this.elementThumb.classList.remove("dragging");
+                window.removeEventListener("mousemove", onMouseMove);
+                window.removeEventListener("mouseup", onMouseUp);
+            };
+
+            window.addEventListener("mousemove", onMouseMove);
+            window.addEventListener("mouseup", onMouseUp);
+        });
+    }
+
+    updateThumbToContent() {
+        const clientSizeX = this.elementContent.clientWidth;
+        const clientScrollableX = this.elementContent.scrollWidth;
+        const clientScrollX = this.elementContent.scrollLeft;
+
+        if (clientSizeX >= clientScrollableX) {
+            this.elementThumb.style.display = "none";
+            return;
+        }
+
+        this.elementThumb.style.display = "block";
+
+        this.elementThumb.style.width = `${(clientSizeX / clientScrollableX) * 100}%`;
+        this.elementThumb.style.left = `${(clientScrollX / clientScrollableX) * 100}%`;
+    }
+
+    addContent(content: HTMLElement) {
+        this.elementContent.appendChild(content);
     }
 }
 
@@ -640,8 +697,7 @@ class InputWidget extends Widget {
     static HTML = `
     <div class="input-container">
         <div class="input-field-container">
-            <img class="input-field-icon" src="assets/icon-input.png">
-            <div class="input-field" contentEditable="true"></div>
+            <img src="assets/icon-input.png">
         </div>
 
         <div class="input-options-container">
@@ -655,17 +711,20 @@ class InputWidget extends Widget {
 
         <div class="input-alphabet-container">
             <img src="assets/icon-alphabet.png">
-            <div class="input-alphabet"></div>
         </div>
     </div>`;
 
     element: HTMLElement;
+    elementInputFieldContainer: HTMLElement;
+    elementInputScrollable: ScrollableDiv;
     elementInput: HTMLElement;
     elementOptionsDelimeter: HTMLElement;
     elementOptionsConvert: HTMLElement;
     elementParsedContainer: HTMLElement;
+    elementAlphabetContainer: HTMLElement;
+    elementAlphabetScrollable: ScrollableDiv;
     elementAlphabet: HTMLElement;
-    messageView: MessagesView;
+    parsedMessageView: MessagesView;
     delimeterDropdown: Dropdown;
     convertDropdown: Dropdown;
     toggleSpacingButton: ToggleButton;
@@ -683,12 +742,16 @@ class InputWidget extends Widget {
 
         // Setup elements
         this.element = createElement(InputWidget.HTML);
-        this.elementInput = this.element.querySelector(".input-field") as HTMLElement;
+        this.elementInputFieldContainer = this.element.querySelector(".input-field-container") as HTMLElement;
+        this.elementInputScrollable = new ScrollableDiv("input-field-scrollable");
+        this.elementInput = createElement(`<div class="input-field" contentEditable="true"></div>`);
         this.elementOptionsDelimeter = this.element.querySelector(".input-options-delimeter") as HTMLElement;
         this.elementOptionsConvert = this.element.querySelector(".input-options-convert") as HTMLElement;
         this.elementParsedContainer = this.element.querySelector(".input-parsed-container") as HTMLElement;
-        this.elementAlphabet = this.element.querySelector(".input-alphabet") as HTMLElement;
-        this.messageView = new MessagesView();
+        this.parsedMessageView = new MessagesView();
+        this.elementAlphabetContainer = this.element.querySelector(".input-alphabet-container") as HTMLElement;
+        this.elementAlphabetScrollable = new ScrollableDiv("input-alphabet-scrollable");
+        this.elementAlphabet = createElement(`<div class="input-alphabet"></div>`);
         this.delimeterDropdown = new Dropdown(
             {
                 comma: "assets/icon-comma.png",
@@ -717,12 +780,16 @@ class InputWidget extends Widget {
             }
         );
         this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
-            this.messageView.setLetterGapsActive(toggled);
+            this.parsedMessageView.setLetterGapsActive(toggled);
             this.elementAlphabet.classList.toggle("use-gaps", toggled);
         });
 
         // Add all elements to each other
-        this.elementParsedContainer.appendChild(this.messageView.element);
+        this.elementInputFieldContainer.appendChild(this.elementInputScrollable.element);
+        this.elementInputScrollable.addContent(this.elementInput);
+        this.elementAlphabetContainer.appendChild(this.elementAlphabetScrollable.element);
+        this.elementAlphabetScrollable.addContent(this.elementAlphabet);
+        this.elementParsedContainer.appendChild(this.parsedMessageView.element);
         this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
         this.elementOptionsConvert.appendChild(this.convertDropdown.element);
         this.container.addHeaderExtra(this.toggleSpacingButton.element);
@@ -754,8 +821,11 @@ class InputWidget extends Widget {
         this.elementAlphabet.style.setProperty("--max-width", `${maxWidth * 0.85}rem`);
 
         // Set parsed messages and fire event
-        this.messageView.setMessages(this.outputMessages);
+        this.parsedMessageView.setMessages(this.outputMessages);
         this.outputEvent.fire(this.outputMessages);
+
+        // Update alphabet scroller
+        this.elementAlphabetScrollable.updateThumbToContent();
     }
 
     setContent(input: number[][]) {
