@@ -297,7 +297,7 @@ class MessagesView {
             const cell = createElement(`<span>${letter}</span>`);
             if (letter.length > maxLetterLength) {
                 cell.style.fontSize = `${1 - (letter.length - maxLetterLength) * 0.15}rem`;
-                cell.style.lineHeight = `${1 - (letter.length - maxLetterLength) * 0.2}rem`;
+                cell.style.lineHeight = `${1.8 - (letter.length - maxLetterLength) * 0.05}rem`;
             }
             row.appendChild(cell);
         }
@@ -655,7 +655,7 @@ class InputWidget extends Widget {
 
         <div class="input-alphabet-container">
             <img src="assets/icon-alphabet.png">
-            <div class="input-alphabet use-gaps"></div>
+            <div class="input-alphabet"></div>
         </div>
     </div>`;
 
@@ -718,7 +718,7 @@ class InputWidget extends Widget {
         );
         this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
             this.messageView.setLetterGapsActive(toggled);
-            this.elementAlphabet.classList.toggle("use-gaps");
+            this.elementAlphabet.classList.toggle("use-gaps", toggled);
         });
 
         // Add all elements to each other

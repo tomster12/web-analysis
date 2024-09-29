@@ -278,7 +278,7 @@ var MessagesView = /** @class */ (function () {
             var cell = createElement("<span>".concat(letter, "</span>"));
             if (letter.length > maxLetterLength) {
                 cell.style.fontSize = "".concat(1 - (letter.length - maxLetterLength) * 0.15, "rem");
-                cell.style.lineHeight = "".concat(1 - (letter.length - maxLetterLength) * 0.2, "rem");
+                cell.style.lineHeight = "".concat(1.8 - (letter.length - maxLetterLength) * 0.05, "rem");
             }
             row.appendChild(cell);
         }
@@ -590,7 +590,7 @@ var InputWidget = /** @class */ (function (_super) {
         });
         _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
             _this.messageView.setLetterGapsActive(toggled);
-            _this.elementAlphabet.classList.toggle("use-gaps");
+            _this.elementAlphabet.classList.toggle("use-gaps", toggled);
         });
         // Add all elements to each other
         _this.elementParsedContainer.appendChild(_this.messageView.element);
@@ -647,7 +647,7 @@ var InputWidget = /** @class */ (function (_super) {
     InputWidget.prototype.getOutputType = function () {
         return "Message[]";
     };
-    InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img class=\"input-field-icon\" src=\"assets/icon-input.png\">\n            <div class=\"input-field\" contentEditable=\"true\"></div>\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed-container\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n            <div class=\"input-alphabet use-gaps\"></div>\n        </div>\n    </div>";
+    InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img class=\"input-field-icon\" src=\"assets/icon-input.png\">\n            <div class=\"input-field\" contentEditable=\"true\"></div>\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed-container\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n            <div class=\"input-alphabet\"></div>\n        </div>\n    </div>";
     return InputWidget;
 }(Widget));
 var StatsWidget = /** @class */ (function (_super) {

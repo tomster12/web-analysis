@@ -132,12 +132,12 @@ hr {
     position: relative;
     width: 3rem;
     height: 2.2rem;
-    background-color: #e2e2e2;
+    background-color: #cbcbcb;
     border-radius: 0.5rem;
 }
 
 .dropdown:hover {
-    background-color: #cacaca;
+    background-color: #aeaeae;
     cursor: pointer;
 }
 
@@ -260,6 +260,7 @@ hr {
     white-space: pre;
     padding: 0.001px;
     box-sizing: border-box;
+    overflow: hidden;
 }
 
 .messages .message span.hovered {
@@ -272,6 +273,7 @@ hr {
 
 .messages.use-gaps span {
     margin: 0.3rem;
+    border-radius: 0.15rem;
 }
 
 /* -------------------- */
@@ -279,12 +281,12 @@ hr {
 .input-field-container {
     display: flex;
     flex-direction: row;
-    padding: 1.2rem;
+    margin: 1.2rem;
     overflow: hidden;
 }
 
 .input-field-icon {
-    height: 2.4rem;
+    height: 1.8rem;
     margin-top: 0.6rem;
     margin-right: 1rem;
 }
@@ -293,7 +295,7 @@ hr {
     flex-grow: 1;
     background-color: #ffffff;
     padding: 0.6rem;
-    border-radius: 0.2rem;
+    border-radius: 0.4rem;
     overflow: hidden;
     overflow-x: scroll;
 }
@@ -303,27 +305,18 @@ hr {
 }
 
 .input-options-container {
-    margin: 0 1rem;
+    margin: 0 1.6rem;
     display: flex;
     align-items: center;
 }
 
 .input-options-container p {
-    margin-right: 1.4rem;
+    margin-right: 1rem;
 }
 
 .input-options-delimeter,
 .input-options-convert {
-    margin-right: 1.4rem;
-}
-
-.input-options-container .dropdown {
-    background-color: #cbcbcb;
-}
-
-.input-options-container .dropdown:hover {
-    background-color: #aeaeae;
-    cursor: pointer;
+    margin-right: 2rem;
 }
 
 .input-parsed-container {
@@ -339,9 +332,9 @@ hr {
 
 .input-alphabet-container img {
     position: relative;
-    height: 2.5rem;
-    margin: 1.2rem;
-    margin-left: 0;
+    height: 1.8rem;
+    margin-top: 0.6rem;
+    margin-right: 1rem;
 }
 
 .input-alphabet {
@@ -354,13 +347,15 @@ hr {
 
 .input-alphabet span {
     display: inline-block;
-    background-color: #e3e3e3;
-    width: var(--max-width);
+    padding: 0 0.4rem;
+    width: var(--adjusted-span-width);
+    height: 2rem;
+    line-height: 2.1rem;
     margin: 0;
-    height: 2.2rem;
-    line-height: 2.2rem;
     text-align: center;
     white-space: pre;
+    background-color: #ededed;
+    overflow: hidden;
 }
 
 .input-alphabet.use-gaps {
@@ -369,6 +364,7 @@ hr {
 
 .input-alphabet.use-gaps span {
     margin: 0.3rem;
+    border-radius: 0.15rem;
 }
 
 /* -------------------- */
