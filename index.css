@@ -32,14 +32,11 @@ body {
     text-align: center;
     font-size: 1.7rem;
     color: #c3c3c3;
-}
-
-hr {
-    border: 1px solid #9d9d9d;
-    margin: 1.2rem auto;
+    margin: 2rem 0 2.5rem 0;
 }
 
 .widget-feed {
+    margin: 0 1rem;
     padding: 1.5rem;
     display: flex;
     flex-direction: column;
