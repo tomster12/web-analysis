@@ -10,7 +10,7 @@ type HighlightData = number[][] | number[][][] | string[][] | null;
 
 // ------------------------ Constants ------------------------
 
-const ELEMENT_MAIN = document.querySelector(".main") as HTMLElement;
+const ELEMENT_WIDGET_FEED = document.querySelector(".widget-feed") as HTMLElement;
 
 const EXAMPLE_MESSAGES = [
     [
@@ -262,14 +262,14 @@ class MessagesView {
     messages: Message[];
     highlight: HighlightData;
     highlightMode: HighlightMode;
-    useSpacing: boolean;
+    usingLetterGaps: boolean;
     cells: HTMLElement[][];
 
     constructor(highlightMode: HighlightMode = "Categoric") {
         this.element = createElement(MessagesView.HTML);
         this.messages = [];
         this.highlightMode = highlightMode;
-        this.useSpacing = false;
+        this.usingLetterGaps = false;
     }
 
     setMessages(messages: Message[], highlight: HighlightData = null) {
@@ -277,22 +277,28 @@ class MessagesView {
         this.element.innerHTML = "";
         this.cells = [];
 
-        // Find fixed width based on maximum character count
-        let maxWidth = 0;
+        // Find max length of any letter in any message
+        let maxLetterLength = 0;
         for (let msg = 0; msg < messages.length; msg++) {
             for (let col = 0; col < messages[msg].length; col++) {
-                maxWidth = Math.max(maxWidth, messages[msg][col].toString().length);
+                let letter = messages[msg][col].toString();
+                maxLetterLength = Math.max(maxLetterLength, letter.length);
             }
         }
 
-        // Set max width of spans with base element variable
-        this.element.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
+        // Set max width of letter spans
+        this.element.style.setProperty("--adjusted-span-width", `${1.8 + (maxLetterLength - 1) * 0.2}rem`);
 
         // Create index row
         const row = createElement(`<div class="indices"></div>`);
         let maxLength = Math.max(...messages.map((line) => line.length));
         for (let col = 0; col < maxLength; col++) {
-            const cell = createElement(`<span>${col}</span>`);
+            let letter = col.toString();
+            const cell = createElement(`<span>${letter}</span>`);
+            if (letter.length > maxLetterLength) {
+                cell.style.fontSize = `${1 - (letter.length - maxLetterLength) * 0.15}rem`;
+                cell.style.lineHeight = `${1 - (letter.length - maxLetterLength) * 0.2}rem`;
+            }
             row.appendChild(cell);
         }
         this.element.appendChild(row);
@@ -302,7 +308,8 @@ class MessagesView {
             const row = createElement(`<div class="message"></div>`);
             this.cells.push([]);
             for (let col = 0; col < messages[msg].length; col++) {
-                const cell = createElement(`<span>${messages[msg][col]}</span>`);
+                let letter = messages[msg][col].toString();
+                const cell = createElement(`<span>${letter}</span>`);
                 cell.addEventListener("mouseenter", () => this.hoverLetter(messages[msg][col]));
                 cell.addEventListener("mouseleave", () => this.unhoverLetter(messages[msg][col]));
                 row.appendChild(cell);
@@ -310,6 +317,35 @@ class MessagesView {
             }
             this.element.appendChild(row);
         }
+
+        /*
+        // Create index row
+        const row = createElement(`<div class="indices"></div>`);
+        let maxLength = Math.max(...messages.map((line) => line.length));
+        for (let col = 0; col < maxLength; col++) {
+            let letter = col.toString();
+            const cell = createElement(`<span>${letter}</span>`);
+            cell.style.fontSize = `${1 - (letter.length - 1) * 0.2}rem`;
+            row.appendChild(cell);
+        }
+        this.element.appendChild(row);
+
+        // Create div for each row, span for each cell
+        for (let msg = 0; msg < messages.length; msg++) {
+            const row = createElement(`<div class="message"></div>`);
+            this.cells.push([]);
+            for (let col = 0; col < messages[msg].length; col++) {
+                let letter = messages[msg][col].toString();
+                const cell = createElement(`<span>${letter}</span>`);
+                cell.style.fontSize = `${1 - (letter.length - 1) * 0.2}rem`;
+                cell.addEventListener("mouseenter", () => this.hoverLetter(letter));
+                cell.addEventListener("mouseleave", () => this.unhoverLetter(letter));
+                row.appendChild(cell);
+                this.cells[msg].push(cell);
+            }
+            this.element.appendChild(row);
+        }
+        */
 
         // Highlight letters
         this.setHighlight(highlight);
@@ -380,41 +416,53 @@ class MessagesView {
         }
     }
 
-    toggleSpacing() {
-        // Toggle spacing and update class
-        this.element.classList.toggle("use-gaps");
-        this.useSpacing = !this.useSpacing;
+    setLetterGapsActive(isActive: boolean) {
+        this.usingLetterGaps = isActive;
+        this.element.classList.toggle("use-gaps", this.usingLetterGaps);
     }
 }
 
 class ToggleButton {
-    static HTML = `<img class="widget-button">`;
+    static HTML = `
+        <div class="toggle-button">
+            <img />
+        </div>`;
 
-    element: HTMLImageElement;
+    glowWhenToggled: boolean;
+    onIconPath: string;
+    offIconPath: string;
+    element: HTMLElement;
+    elementImage: HTMLImageElement;
     clickEvent: ListenableEvent;
-    toggled: boolean;
+    isToggled: boolean;
 
-    constructor(initial: boolean, offIconPath: string, onIconPath, callback: Function) {
-        this.element = createElement(ToggleButton.HTML) as HTMLImageElement;
-        this.element.src = initial ? onIconPath : offIconPath;
+    constructor(initialValue: boolean, offIconPath: string, onIconPath: string, callback: Function, glowWhenToggled: boolean = true) {
+        this.clickEvent = new ListenableEvent();
+        this.isToggled = initialValue;
+        this.glowWhenToggled = glowWhenToggled;
+        this.onIconPath = onIconPath;
+        this.offIconPath = offIconPath;
+
+        // Setup elements
+        this.element = createElement(ToggleButton.HTML);
+        this.elementImage = this.element.querySelector("img") as HTMLImageElement;
+        this.elementImage.src = initialValue ? onIconPath : offIconPath;
 
         // Setup event and listener
-        this.clickEvent = new ListenableEvent();
-        this.toggled = initial;
         this.element.addEventListener("click", (e) => {
             e.stopPropagation();
-            this.toggled = !this.toggled;
-            this.element.classList.toggle("toggled");
-            this.element.src = this.toggled ? onIconPath : offIconPath;
-            this.clickEvent.fire(e, this.toggled);
+            this.setToggled(!this.isToggled);
         });
 
         // Subscribe callback if provided
         if (callback != null) this.clickEvent.subscribe(callback);
     }
 
-    setIcon(iconPath: string) {
-        this.element.src = iconPath;
+    setToggled(toggled: boolean) {
+        this.isToggled = toggled;
+        if (this.glowWhenToggled) this.element.classList.toggle("glow", this.isToggled);
+        this.elementImage.src = this.isToggled ? this.onIconPath : this.offIconPath;
+        this.clickEvent.fire(this.isToggled);
     }
 }
 
@@ -504,39 +552,48 @@ class WidgetManager {
 
 class WidgetFrame {
     static HTML = `
-    <div class="widget-container">
+    <div class="widget-container footer-closed">
         <div class="widget-header">
-            <div class="widget-id"></div>
             <div class="widget-title"></div>
-            <div class="widget-extra"></div>
+            <div class="widget-button-bar"></div>
         </div>
         <div class="widget-content"></div>
+        <div class="widget-footer">
+            <p>Hello World</p>
+        </div>
     </div>`;
 
     element: HTMLElement;
     elementHeader: HTMLElement;
-    elementID: HTMLElement;
     elementTitle: HTMLElement;
-    elementExtra: HTMLElement;
+    elementButtonBar: HTMLElement;
     elementContent: HTMLElement;
+    footerButton: ToggleButton;
     isClosed: boolean;
+    isFooterClosed: boolean;
 
     constructor(parent: HTMLElement | null = null, count: number, title: string = "") {
+        this.isClosed = false;
+        this.isFooterClosed = true;
+
         // Setup container
         this.element = createElement(WidgetFrame.HTML);
         this.elementHeader = this.element.querySelector(".widget-header") as HTMLElement;
-        this.elementID = this.element.querySelector(".widget-id") as HTMLElement;
         this.elementTitle = this.element.querySelector(".widget-title") as HTMLElement;
-        this.elementExtra = this.element.querySelector(".widget-extra") as HTMLElement;
+        this.elementButtonBar = this.element.querySelector(".widget-button-bar") as HTMLElement;
         this.elementContent = this.element.querySelector(".widget-content") as HTMLElement;
+        this.footerButton = new ToggleButton(false, "assets/icon-connection.png", "assets/icon-connection.png", (toggled) => {
+            this.setFooterClosed(!toggled);
+        });
+
+        // Connect elements
         if (parent != null) parent.appendChild(this.element);
+        this.elementHeader.appendChild(this.footerButton.element);
 
         // Add title close listener
-        this.isClosed = false;
-        this.elementHeader.addEventListener("click", () => this.toggleClosed());
+        this.elementHeader.addEventListener("click", () => this.setClosed(!this.isClosed));
 
         // Set element values
-        this.elementID.textContent = count.toString();
         this.setTitle(title);
     }
 
@@ -545,17 +602,21 @@ class WidgetFrame {
     }
 
     addHeaderExtra(extra: HTMLElement) {
-        this.elementExtra.appendChild(extra);
+        this.elementButtonBar.appendChild(extra);
     }
 
     addContent(content: HTMLElement) {
         this.elementContent.appendChild(content);
     }
 
-    toggleClosed() {
-        this.isClosed = !this.isClosed;
-        this.element.classList.toggle("closed");
-        this.elementContent.style.display = this.isClosed ? "none" : "block";
+    setClosed(isClosed: boolean) {
+        this.isClosed = isClosed;
+        this.element.classList.toggle("closed", this.isClosed);
+    }
+
+    setFooterClosed(isClosed: boolean) {
+        this.isFooterClosed = isClosed;
+        this.element.classList.toggle("footer-closed", this.isFooterClosed);
     }
 }
 
@@ -566,7 +627,7 @@ abstract class Widget {
 
     constructor(title: string) {
         this.id = WIDGET_MANAGER.registerWidget(this);
-        this.container = new WidgetFrame(ELEMENT_MAIN, this.id, title);
+        this.container = new WidgetFrame(ELEMENT_WIDGET_FEED, this.id, title);
     }
 
     abstract setSourceWidget(widget: Widget): void;
@@ -590,7 +651,7 @@ class InputWidget extends Widget {
             <div class="input-options-convert"></div>
         </div>
 
-        <div class="input-parsed"></div>
+        <div class="input-parsed-container"></div>
 
         <div class="input-alphabet-container">
             <img src="assets/icon-alphabet.png">
@@ -602,7 +663,7 @@ class InputWidget extends Widget {
     elementInput: HTMLElement;
     elementOptionsDelimeter: HTMLElement;
     elementOptionsConvert: HTMLElement;
-    elementParsed: HTMLElement;
+    elementParsedContainer: HTMLElement;
     elementAlphabet: HTMLElement;
     messageView: MessagesView;
     delimeterDropdown: Dropdown;
@@ -625,10 +686,9 @@ class InputWidget extends Widget {
         this.elementInput = this.element.querySelector(".input-field") as HTMLElement;
         this.elementOptionsDelimeter = this.element.querySelector(".input-options-delimeter") as HTMLElement;
         this.elementOptionsConvert = this.element.querySelector(".input-options-convert") as HTMLElement;
-        this.elementParsed = this.element.querySelector(".input-parsed") as HTMLElement;
+        this.elementParsedContainer = this.element.querySelector(".input-parsed-container") as HTMLElement;
         this.elementAlphabet = this.element.querySelector(".input-alphabet") as HTMLElement;
         this.messageView = new MessagesView();
-        this.elementParsed.appendChild(this.messageView.element);
         this.delimeterDropdown = new Dropdown(
             {
                 comma: "assets/icon-comma.png",
@@ -656,12 +716,13 @@ class InputWidget extends Widget {
                 this.processMessages();
             }
         );
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
-            this.messageView.toggleSpacing();
+        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+            this.messageView.setLetterGapsActive(toggled);
             this.elementAlphabet.classList.toggle("use-gaps");
         });
 
         // Add all elements to each other
+        this.elementParsedContainer.appendChild(this.messageView.element);
         this.elementOptionsDelimeter.appendChild(this.delimeterDropdown.element);
         this.elementOptionsConvert.appendChild(this.convertDropdown.element);
         this.container.addHeaderExtra(this.toggleSpacingButton.element);
@@ -690,7 +751,7 @@ class InputWidget extends Widget {
             this.elementAlphabet.appendChild(createElement(`<span>${l}</span>`));
             maxWidth = Math.max(maxWidth, l.length);
         });
-        this.elementAlphabet.style.setProperty("--max-width", `${maxWidth * 1.4 * 0.85}rem`);
+        this.elementAlphabet.style.setProperty("--max-width", `${maxWidth * 0.85}rem`);
 
         // Set parsed messages and fire event
         this.messageView.setMessages(this.outputMessages);
@@ -810,8 +871,8 @@ class AlignmentWidget extends Widget {
 
         // Setup elements
         this.messageView = new MessagesView();
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
-            this.messageView.toggleSpacing();
+        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+            this.messageView.setLetterGapsActive(toggled);
         });
 
         // Add elements to each other
@@ -864,8 +925,8 @@ class GapsWidget extends Widget {
 
         // Setup elements
         this.messageView = new MessagesView();
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
-            this.messageView.toggleSpacing();
+        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+            this.messageView.setLetterGapsActive(toggled);
         });
         this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", () => {
             this.showGaps = !this.showGaps;
@@ -1032,8 +1093,8 @@ class DeltasWidget extends Widget {
 
         // Setup elements
         this.messageView = new MessagesView("Colour");
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", () => {
-            this.messageView.toggleSpacing();
+        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+            this.messageView.setLetterGapsActive(toggled);
         });
         this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", () => {
             this.mod = !this.mod;

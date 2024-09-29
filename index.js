@@ -15,7 +15,7 @@ var __extends = (this && this.__extends) || (function () {
     };
 })();
 // ------------------------ Constants ------------------------
-var ELEMENT_MAIN = document.querySelector(".main");
+var ELEMENT_WIDGET_FEED = document.querySelector(".widget-feed");
 var EXAMPLE_MESSAGES = [
     [
         50, 66, 5, 48, 62, 13, 75, 29, 24, 61, 42, 70, 66, 62, 32, 14, 81, 8, 15, 78, 2, 29, 13, 49, 1, 80, 82, 40, 63, 81, 21, 19, 0, 40, 51, 65, 26, 14, 21,
@@ -252,7 +252,7 @@ var MessagesView = /** @class */ (function () {
         this.element = createElement(MessagesView.HTML);
         this.messages = [];
         this.highlightMode = highlightMode;
-        this.useSpacing = false;
+        this.usingLetterGaps = false;
     }
     MessagesView.prototype.setMessages = function (messages, highlight) {
         var _this = this;
@@ -260,20 +260,26 @@ var MessagesView = /** @class */ (function () {
         this.messages = messages;
         this.element.innerHTML = "";
         this.cells = [];
-        // Find fixed width based on maximum character count
-        var maxWidth = 0;
+        // Find max length of any letter in any message
+        var maxLetterLength = 0;
         for (var msg = 0; msg < messages.length; msg++) {
             for (var col = 0; col < messages[msg].length; col++) {
-                maxWidth = Math.max(maxWidth, messages[msg][col].toString().length);
+                var letter = messages[msg][col].toString();
+                maxLetterLength = Math.max(maxLetterLength, letter.length);
             }
         }
-        // Set max width of spans with base element variable
-        this.element.style.setProperty("--max-width", "".concat(maxWidth * 1.4 * 0.85, "rem"));
+        // Set max width of letter spans
+        this.element.style.setProperty("--adjusted-span-width", "".concat(1.8 + (maxLetterLength - 1) * 0.2, "rem"));
         // Create index row
         var row = createElement("<div class=\"indices\"></div>");
         var maxLength = Math.max.apply(Math, messages.map(function (line) { return line.length; }));
         for (var col = 0; col < maxLength; col++) {
-            var cell = createElement("<span>".concat(col, "</span>"));
+            var letter = col.toString();
+            var cell = createElement("<span>".concat(letter, "</span>"));
+            if (letter.length > maxLetterLength) {
+                cell.style.fontSize = "".concat(1 - (letter.length - maxLetterLength) * 0.15, "rem");
+                cell.style.lineHeight = "".concat(1 - (letter.length - maxLetterLength) * 0.2, "rem");
+            }
             row.appendChild(cell);
         }
         this.element.appendChild(row);
@@ -281,7 +287,8 @@ var MessagesView = /** @class */ (function () {
             var row_1 = createElement("<div class=\"message\"></div>");
             this_1.cells.push([]);
             var _loop_2 = function (col) {
-                var cell = createElement("<span>".concat(messages[msg][col], "</span>"));
+                var letter = messages[msg][col].toString();
+                var cell = createElement("<span>".concat(letter, "</span>"));
                 cell.addEventListener("mouseenter", function () { return _this.hoverLetter(messages[msg][col]); });
                 cell.addEventListener("mouseleave", function () { return _this.unhoverLetter(messages[msg][col]); });
                 row_1.appendChild(cell);
@@ -297,6 +304,34 @@ var MessagesView = /** @class */ (function () {
         for (var msg = 0; msg < messages.length; msg++) {
             _loop_1(msg);
         }
+        /*
+        // Create index row
+        const row = createElement(`<div class="indices"></div>`);
+        let maxLength = Math.max(...messages.map((line) => line.length));
+        for (let col = 0; col < maxLength; col++) {
+            let letter = col.toString();
+            const cell = createElement(`<span>${letter}</span>`);
+            cell.style.fontSize = `${1 - (letter.length - 1) * 0.2}rem`;
+            row.appendChild(cell);
+        }
+        this.element.appendChild(row);
+
+        // Create div for each row, span for each cell
+        for (let msg = 0; msg < messages.length; msg++) {
+            const row = createElement(`<div class="message"></div>`);
+            this.cells.push([]);
+            for (let col = 0; col < messages[msg].length; col++) {
+                let letter = messages[msg][col].toString();
+                const cell = createElement(`<span>${letter}</span>`);
+                cell.style.fontSize = `${1 - (letter.length - 1) * 0.2}rem`;
+                cell.addEventListener("mouseenter", () => this.hoverLetter(letter));
+                cell.addEventListener("mouseleave", () => this.unhoverLetter(letter));
+                row.appendChild(cell);
+                this.cells[msg].push(cell);
+            }
+            this.element.appendChild(row);
+        }
+        */
         // Highlight letters
         this.setHighlight(highlight);
     };
@@ -364,37 +399,43 @@ var MessagesView = /** @class */ (function () {
             }
         }
     };
-    MessagesView.prototype.toggleSpacing = function () {
-        // Toggle spacing and update class
-        this.element.classList.toggle("use-gaps");
-        this.useSpacing = !this.useSpacing;
+    MessagesView.prototype.setLetterGapsActive = function (isActive) {
+        this.usingLetterGaps = isActive;
+        this.element.classList.toggle("use-gaps", this.usingLetterGaps);
     };
     MessagesView.HTML = "<div class=\"messages\"></div>";
     return MessagesView;
 }());
 var ToggleButton = /** @class */ (function () {
-    function ToggleButton(initial, offIconPath, onIconPath, callback) {
+    function ToggleButton(initialValue, offIconPath, onIconPath, callback, glowWhenToggled) {
+        if (glowWhenToggled === void 0) { glowWhenToggled = true; }
         var _this = this;
-        this.element = createElement(ToggleButton.HTML);
-        this.element.src = initial ? onIconPath : offIconPath;
-        // Setup event and listener
         this.clickEvent = new ListenableEvent();
-        this.toggled = initial;
+        this.isToggled = initialValue;
+        this.glowWhenToggled = glowWhenToggled;
+        this.onIconPath = onIconPath;
+        this.offIconPath = offIconPath;
+        // Setup elements
+        this.element = createElement(ToggleButton.HTML);
+        this.elementImage = this.element.querySelector("img");
+        this.elementImage.src = initialValue ? onIconPath : offIconPath;
+        // Setup event and listener
         this.element.addEventListener("click", function (e) {
             e.stopPropagation();
-            _this.toggled = !_this.toggled;
-            _this.element.classList.toggle("toggled");
-            _this.element.src = _this.toggled ? onIconPath : offIconPath;
-            _this.clickEvent.fire(e, _this.toggled);
+            _this.setToggled(!_this.isToggled);
         });
         // Subscribe callback if provided
         if (callback != null)
             this.clickEvent.subscribe(callback);
     }
-    ToggleButton.prototype.setIcon = function (iconPath) {
-        this.element.src = iconPath;
+    ToggleButton.prototype.setToggled = function (toggled) {
+        this.isToggled = toggled;
+        if (this.glowWhenToggled)
+            this.element.classList.toggle("glow", this.isToggled);
+        this.elementImage.src = this.isToggled ? this.onIconPath : this.offIconPath;
+        this.clickEvent.fire(this.isToggled);
     };
-    ToggleButton.HTML = "<img class=\"widget-button\">";
+    ToggleButton.HTML = "\n        <div class=\"toggle-button\">\n            <img />\n        </div>";
     return ToggleButton;
 }());
 var Dropdown = /** @class */ (function () {
@@ -467,43 +508,50 @@ var WidgetFrame = /** @class */ (function () {
         if (parent === void 0) { parent = null; }
         if (title === void 0) { title = ""; }
         var _this = this;
+        this.isClosed = false;
+        this.isFooterClosed = true;
         // Setup container
         this.element = createElement(WidgetFrame.HTML);
         this.elementHeader = this.element.querySelector(".widget-header");
-        this.elementID = this.element.querySelector(".widget-id");
         this.elementTitle = this.element.querySelector(".widget-title");
-        this.elementExtra = this.element.querySelector(".widget-extra");
+        this.elementButtonBar = this.element.querySelector(".widget-button-bar");
         this.elementContent = this.element.querySelector(".widget-content");
+        this.footerButton = new ToggleButton(false, "assets/icon-connection.png", "assets/icon-connection.png", function (toggled) {
+            _this.setFooterClosed(!toggled);
+        });
+        // Connect elements
         if (parent != null)
             parent.appendChild(this.element);
+        this.elementHeader.appendChild(this.footerButton.element);
         // Add title close listener
-        this.isClosed = false;
-        this.elementHeader.addEventListener("click", function () { return _this.toggleClosed(); });
+        this.elementHeader.addEventListener("click", function () { return _this.setClosed(!_this.isClosed); });
         // Set element values
-        this.elementID.textContent = count.toString();
         this.setTitle(title);
     }
     WidgetFrame.prototype.setTitle = function (title) {
         this.elementTitle.textContent = title;
     };
     WidgetFrame.prototype.addHeaderExtra = function (extra) {
-        this.elementExtra.appendChild(extra);
+        this.elementButtonBar.appendChild(extra);
     };
     WidgetFrame.prototype.addContent = function (content) {
         this.elementContent.appendChild(content);
     };
-    WidgetFrame.prototype.toggleClosed = function () {
-        this.isClosed = !this.isClosed;
-        this.element.classList.toggle("closed");
-        this.elementContent.style.display = this.isClosed ? "none" : "block";
+    WidgetFrame.prototype.setClosed = function (isClosed) {
+        this.isClosed = isClosed;
+        this.element.classList.toggle("closed", this.isClosed);
     };
-    WidgetFrame.HTML = "\n    <div class=\"widget-container\">\n        <div class=\"widget-header\">\n            <div class=\"widget-id\"></div>\n            <div class=\"widget-title\"></div>\n            <div class=\"widget-extra\"></div>\n        </div>\n        <div class=\"widget-content\"></div>\n    </div>";
+    WidgetFrame.prototype.setFooterClosed = function (isClosed) {
+        this.isFooterClosed = isClosed;
+        this.element.classList.toggle("footer-closed", this.isFooterClosed);
+    };
+    WidgetFrame.HTML = "\n    <div class=\"widget-container footer-closed\">\n        <div class=\"widget-header\">\n            <div class=\"widget-title\"></div>\n            <div class=\"widget-button-bar\"></div>\n        </div>\n        <div class=\"widget-content\"></div>\n        <div class=\"widget-footer\">\n            <p>Hello World</p>\n        </div>\n    </div>";
     return WidgetFrame;
 }());
 var Widget = /** @class */ (function () {
     function Widget(title) {
         this.id = WIDGET_MANAGER.registerWidget(this);
-        this.container = new WidgetFrame(ELEMENT_MAIN, this.id, title);
+        this.container = new WidgetFrame(ELEMENT_WIDGET_FEED, this.id, title);
     }
     return Widget;
 }());
@@ -518,10 +566,9 @@ var InputWidget = /** @class */ (function (_super) {
         _this.elementInput = _this.element.querySelector(".input-field");
         _this.elementOptionsDelimeter = _this.element.querySelector(".input-options-delimeter");
         _this.elementOptionsConvert = _this.element.querySelector(".input-options-convert");
-        _this.elementParsed = _this.element.querySelector(".input-parsed");
+        _this.elementParsedContainer = _this.element.querySelector(".input-parsed-container");
         _this.elementAlphabet = _this.element.querySelector(".input-alphabet");
         _this.messageView = new MessagesView();
-        _this.elementParsed.appendChild(_this.messageView.element);
         _this.delimeterDropdown = new Dropdown({
             comma: "assets/icon-comma.png",
             dot: "assets/icon-dot.png",
@@ -541,11 +588,12 @@ var InputWidget = /** @class */ (function (_super) {
             _this.convertOption = convertOption;
             _this.processMessages();
         });
-        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
-            _this.messageView.toggleSpacing();
+        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+            _this.messageView.setLetterGapsActive(toggled);
             _this.elementAlphabet.classList.toggle("use-gaps");
         });
         // Add all elements to each other
+        _this.elementParsedContainer.appendChild(_this.messageView.element);
         _this.elementOptionsDelimeter.appendChild(_this.delimeterDropdown.element);
         _this.elementOptionsConvert.appendChild(_this.convertDropdown.element);
         _this.container.addHeaderExtra(_this.toggleSpacingButton.element);
@@ -573,7 +621,7 @@ var InputWidget = /** @class */ (function (_super) {
             _this.elementAlphabet.appendChild(createElement("<span>".concat(l, "</span>")));
             maxWidth = Math.max(maxWidth, l.length);
         });
-        this.elementAlphabet.style.setProperty("--max-width", "".concat(maxWidth * 1.4 * 0.85, "rem"));
+        this.elementAlphabet.style.setProperty("--max-width", "".concat(maxWidth * 0.85, "rem"));
         // Set parsed messages and fire event
         this.messageView.setMessages(this.outputMessages);
         this.outputEvent.fire(this.outputMessages);
@@ -599,7 +647,7 @@ var InputWidget = /** @class */ (function (_super) {
     InputWidget.prototype.getOutputType = function () {
         return "Message[]";
     };
-    InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img class=\"input-field-icon\" src=\"assets/icon-input.png\">\n            <div class=\"input-field\" contentEditable=\"true\"></div>\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n            <div class=\"input-alphabet use-gaps\"></div>\n        </div>\n    </div>";
+    InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img class=\"input-field-icon\" src=\"assets/icon-input.png\">\n            <div class=\"input-field\" contentEditable=\"true\"></div>\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed-container\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n            <div class=\"input-alphabet use-gaps\"></div>\n        </div>\n    </div>";
     return InputWidget;
 }(Widget));
 var StatsWidget = /** @class */ (function (_super) {
@@ -670,8 +718,8 @@ var AlignmentWidget = /** @class */ (function (_super) {
         var _this = _super.call(this, "Alignments") || this;
         // Setup elements
         _this.messageView = new MessagesView();
-        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
-            _this.messageView.toggleSpacing();
+        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+            _this.messageView.setLetterGapsActive(toggled);
         });
         // Add elements to each other
         _this.container.addContent(_this.messageView.element);
@@ -710,8 +758,8 @@ var GapsWidget = /** @class */ (function (_super) {
         _this.includeEnd = false;
         // Setup elements
         _this.messageView = new MessagesView();
-        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
-            _this.messageView.toggleSpacing();
+        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+            _this.messageView.setLetterGapsActive(toggled);
         });
         _this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-eye.png", function () {
             _this.showGaps = !_this.showGaps;
@@ -847,8 +895,8 @@ var DeltasWidget = /** @class */ (function (_super) {
         _this.modSize = 0;
         // Setup elements
         _this.messageView = new MessagesView("Colour");
-        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-shrink.png", function () {
-            _this.messageView.toggleSpacing();
+        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+            _this.messageView.setLetterGapsActive(toggled);
         });
         _this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-dot.png", function () {
             _this.mod = !_this.mod;

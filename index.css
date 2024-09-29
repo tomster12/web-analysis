@@ -17,7 +17,7 @@
 }
 
 :root {
-    font-size: 10px;
+    font-size: 14px;
     font-family: Oxygen;
     color: #232323;
 }
@@ -29,7 +29,7 @@ body {
 
 .header {
     text-align: center;
-    font-size: 2rem;
+    font-size: 1.75rem;
     margin: 2rem;
 }
 
@@ -38,7 +38,7 @@ hr {
     margin: 0 auto;
 }
 
-.main {
+.widget-feed {
     display: flex;
     flex-direction: column;
     gap: 1.4rem;
@@ -48,38 +48,26 @@ hr {
 /* -------------------- */
 
 .widget-container {
-    border-bottom: 0.2rem solid #686868;
     border-left: none;
     border-right: none;
-    font-size: 1.4rem;
-}
-
-.widget-container.closed {
-    border-bottom: none;
 }
 
 .widget-header {
     position: relative;
     background-color: #686868;
     display: flex;
-    height: 3rem;
+    height: 2.65rem;
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    padding: 0.4rem 0.4rem 0.4rem 1rem;
+    padding: 0.5rem 0.5rem 0.5rem 0.5rem;
     align-self: auto;
+    border-radius: 0.4rem 0.4rem 0 0;
 }
 
 .widget-header:hover {
     background-color: #575757;
     cursor: pointer;
-}
-
-.widget-id {
-    color: #b9b9b9;
-    font-size: 1.2rem;
-    user-select: none;
-    font-weight: bold;
 }
 
 .widget-title {
@@ -89,49 +77,61 @@ hr {
     left: 50%;
     transform: translateX(-50%);
     top: 0;
+    font-size: 1.3rem;
+    line-height: 2.5rem;
     text-align: center;
-    line-height: 2.85rem;
     color: #ededed;
-    font-size: 1.2rem;
     user-select: none;
 }
 
-.widget-extra {
+.widget-button-bar {
     display: flex;
     flex-direction: row-reverse;
     align-items: center;
-}
-
-.widget-button {
-    background-color: #e2e2e2;
-    height: 1.9rem;
-    margin: 0.2rem;
-    border: 0.3rem solid #e2e2e2;
-    border-radius: 0.5rem;
-    box-shadow: 0.1rem 0.1rem 0.2rem #494949;
-}
-
-.widget-button:hover {
-    background-color: #cacaca;
-    border: 0.2rem solid #cacaca;
-    cursor: pointer;
+    gap: 0.5rem;
 }
 
 .widget-content {
+    display: block;
     background-color: #e2e2e2;
     padding: 0.01px;
     min-height: 1rem;
 }
 
+.widget-footer {
+    background-color: #858585;
+    display: flex;
+    height: 2.5rem;
+    flex-direction: row;
+    align-items: center;
+    padding: 0.3rem 0.3rem 0.3rem 0.75rem;
+    align-self: auto;
+}
+
+.widget-container.footer-closed .widget-footer {
+    display: none;
+}
+
+.widget-container.footer-closed {
+    border-bottom: 3px solid #858585;
+}
+
+.widget-container.closed .widget-content {
+    display: none;
+}
+
+/* .widget-id {
+    color: #b9b9b9;
+    user-select: none;
+    font-weight: bold;
+} */
+
 /* -------------------- */
 
 .dropdown {
     position: relative;
-    padding: 0.3rem;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
+    width: 3rem;
+    height: 2.2rem;
     background-color: #e2e2e2;
     border-radius: 0.5rem;
 }
@@ -142,32 +142,40 @@ hr {
 }
 
 .dropdown-icon-current {
-    height: 1.9rem;
+    position: absolute;
+    width: 1.9rem;
+    left: 0.15rem;
+    top: 50%;
+    transform: translateY(-50%);
     padding: 0.3rem;
     padding-right: 0.3rem;
 }
 
 .dropdown-icon-select {
+    position: absolute;
+    right: 0.15rem;
+    top: 0.6rem;
     height: 1rem;
 }
 
 .dropdown-options {
     position: absolute;
-    left: 0px;
+    left: -0.4rem;
     top: 100%;
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     flex-direction: column;
     background-color: #eeeeee;
-    border: 1px solid #686868;
+    border: 1px solid #878787;
     border-radius: 0.5rem;
     box-shadow: 0.1rem 0.1rem 0.3rem #646464;
     overflow: hidden;
 }
 
 .dropdown-options div {
-    flex-grow: 1;
+    width: 100%;
     padding: 0.5rem;
 }
 
@@ -177,18 +185,51 @@ hr {
 }
 
 .dropdown-options img {
-    height: 2rem;
+    width: 100%;
+}
+
+/* ------------------- */
+
+.toggle-button {
+    background-color: #cacaca;
+    height: 1.8rem;
+    width: 1.8rem;
+    border-radius: 0.4rem;
+    box-shadow: 0 0.1rem 0.2rem #494949;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toggle-button img {
+    height: 62%;
+}
+
+.toggle-button:hover {
+    background-color: #d8d8d8;
+}
+
+.toggle-button:hover img {
+    height: 67%;
+}
+
+.toggle-button.glow {
+    background-color: #ffffff;
+    box-shadow: 0 0.1rem 0.2rem #676767;
+}
+
+.toggle-button.glow:hover {
+    background-color: #fafafa;
 }
 
 /* ------------------- */
 
 .messages {
     background-color: #ffffff;
-    margin: 1.2rem;
     padding: 0.6rem;
     overflow-x: scroll;
     white-space: nowrap;
-    font-size: 1.4rem;
     font-family: Cousine;
 }
 
@@ -200,7 +241,7 @@ hr {
     width: fit-content;
     background-color: #ffffff;
     border-bottom: 1px solid #dddddd;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.55rem;
 }
 
 .messages .indices span {
@@ -211,13 +252,18 @@ hr {
 .messages span {
     display: inline-block;
     background-color: #ededed;
-    margin: 0rem;
-    width: var(--max-width);
-    height: 2.2rem;
-    line-height: 2.2rem;
-    text-align: center;
     padding: 0.2rem;
+    width: var(--adjusted-span-width);
+    height: 1.8rem;
+    line-height: 1.9rem;
+    text-align: center;
     white-space: pre;
+    padding: 0.001px;
+    box-sizing: border-box;
+}
+
+.messages .message span.hovered {
+    box-shadow: 0px 0px 0px 1px black inset;
 }
 
 .messages.use-gaps {
@@ -226,11 +272,6 @@ hr {
 
 .messages.use-gaps span {
     margin: 0.3rem;
-}
-
-.messages .message span.hovered {
-    border: 1px solid #272727;
-    line-height: calc(2.2rem - 2px);
 }
 
 /* -------------------- */
@@ -255,7 +296,6 @@ hr {
     border-radius: 0.2rem;
     overflow: hidden;
     overflow-x: scroll;
-    font-size: 1.5rem;
 }
 
 .input-field:focus {
@@ -270,8 +310,8 @@ hr {
 
 .input-options-container p {
     margin-right: 1.4rem;
-    font-size: 1.4rem;
 }
+
 .input-options-delimeter,
 .input-options-convert {
     margin-right: 1.4rem;
@@ -286,8 +326,9 @@ hr {
     cursor: pointer;
 }
 
-.input-parsed {
+.input-parsed-container {
     padding: 0.01px;
+    padding: 1.2rem;
 }
 
 .input-alphabet-container {
@@ -308,7 +349,6 @@ hr {
     background-color: #ffffff;
     overflow-x: scroll;
     white-space: nowrap;
-    font-size: 1.4rem;
     font-family: Cousine;
 }
 
