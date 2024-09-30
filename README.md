@@ -5,7 +5,12 @@ A site for simple cryptographical analysis, primarily made for the noita eye puz
 ## TODO
 
 - [x] Changeover to typescript
-- [ ] Increase css class specificity
-- [ ] Toggle buttons for most things
+- [x] Increase css class specificity
+- [x] Toggle buttons for most things
+- [x] Choosable source for most widgets
 - [ ] Info hover for all widgets
-- [ ] Choosable source for most widgets
+- [ ] Rearrangable widgets
+- [ ] Adding new widgets
+- [ ] Fixed row index
+- [ ] Selectable letter groups
+- [ ] More widgets! (isomorphs, etc.
