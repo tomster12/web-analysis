@@ -644,7 +644,7 @@ var WidgetFrame = /** @class */ (function () {
         WIDGET_MANAGER.onAddWidgetEvent.listen(this, function (widget) { return _this.updateAvailableSources(); });
         // Set element values
         this.setTitle(title);
-        this.footerButton.setToggled(true);
+        this.footerButton.setToggled(false);
         this.elementFooterInputType.innerText = this.widget.getSourceType();
         this.elementFooterOutputType.innerText = this.widget.getOutputType();
         this.updateAvailableSources();
