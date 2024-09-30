@@ -76,7 +76,7 @@ for (let i = 0; i < HIGHLIGHT_COUNT; i++) {
     HIGHLIGHTS.push(`hsl(${hue}, 75%, 75%)`);
 }
 
-let WIDGET_MANAGER;
+let WIDGET_MANAGER: WidgetManager;
 
 // ------------------------ Crypto ------------------------
 
@@ -117,6 +117,9 @@ function convertMessages(messages: StringMessage[], convertOption: ConvertOption
 }
 
 function parseAlphabet(messages: Message[]): string[] {
+    if (messages == null) return [];
+    if (messages.length == 0) return [];
+
     // Get all unique characters
     let messagesStr: StringMessage[] = messages as StringMessage[];
     let alphSet: Set<string> = new Set();
@@ -240,18 +243,22 @@ function createElement(html: string): HTMLElement {
 }
 
 class ListenableEvent {
-    listeners: Function[];
+    listeners: Map<object, Function>;
 
     constructor() {
-        this.listeners = [];
+        this.listeners = new Map();
     }
 
-    subscribe(listener: Function) {
-        this.listeners.push(listener);
+    listen(listener: object, callback: Function) {
+        this.listeners.set(listener, callback);
+    }
+
+    unlisten(listener: object) {
+        this.listeners.delete(listener);
     }
 
     fire(...args: any[]) {
-        this.listeners.forEach((listener) => listener(...args));
+        this.listeners.forEach((callback) => callback(...args));
     }
 }
 
@@ -415,7 +422,7 @@ class ToggleButton {
     clickEvent: ListenableEvent;
     isToggled: boolean;
 
-    constructor(initialValue: boolean, offIconPath: string, onIconPath: string, callback: Function, glowWhenToggled: boolean = true) {
+    constructor(initialValue: boolean, offIconPath: string, onIconPath: string, glowWhenToggled: boolean = true) {
         this.clickEvent = new ListenableEvent();
         this.isToggled = initialValue;
         this.glowWhenToggled = glowWhenToggled;
@@ -432,9 +439,6 @@ class ToggleButton {
             e.stopPropagation();
             this.setToggled(!this.isToggled);
         });
-
-        // Subscribe callback if provided
-        if (callback != null) this.clickEvent.subscribe(callback);
     }
 
     setToggled(toggled: boolean) {
@@ -448,60 +452,119 @@ class ToggleButton {
 class Dropdown {
     static HTML = `
     <div class="dropdown">
-        <img class="dropdown-icon-current"><img class="dropdown-icon-select" src="assets/icon-dropdown.png">
+        <div class="dropdown-main">
+            <div class="dropdown-current"></div>
+            <img class="dropdown-icon-select" src="assets/icon-dropdown.png">
+        </div>
         <div class="dropdown-options"></div>
     </div>`;
 
-    element: HTMLElement;
-    elementIconCurrent: HTMLImageElement;
-    elementIconSelect: HTMLImageElement;
-    elementOptions: HTMLElement;
+    mode: "icon" | "text";
     options: { [key: string]: string };
+    isOpen: boolean;
     selectEvent: ListenableEvent;
     selected: string;
 
-    constructor(options: { [key: string]: string }, initial: string, callback: Function) {
+    element: HTMLElement;
+    elementMain: HTMLElement;
+    elementCurrent: HTMLElement;
+    elementCurrentIcon: HTMLImageElement;
+    elementIconSelect: HTMLImageElement;
+    elementOptions: HTMLElement;
+
+    constructor(options: { [key: string]: string }, initial: string | null, mode: "icon" | "text" = "icon") {
+        this.mode = mode;
+        this.isOpen = false;
+        this.selectEvent = new ListenableEvent();
+
         // Setup elements
         this.element = createElement(Dropdown.HTML);
-        this.elementIconCurrent = this.element.querySelector(".dropdown-icon-current") as HTMLImageElement;
+        this.elementMain = this.element.querySelector(".dropdown-main") as HTMLElement;
+        this.elementCurrent = this.element.querySelector(".dropdown-current") as HTMLElement;
         this.elementIconSelect = this.element.querySelector(".dropdown-icon-select") as HTMLImageElement;
         this.elementOptions = this.element.querySelector(".dropdown-options") as HTMLElement;
         this.elementOptions.style.display = "none";
 
+        if (this.mode == "icon") {
+            this.elementCurrentIcon = createElement(`<img>`) as HTMLImageElement;
+            this.elementCurrent.appendChild(this.elementCurrentIcon);
+        }
+
+        // Setup events
+        this.elementMain.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.setOpen(!this.isOpen);
+        });
+
+        window.addEventListener("click", () => {
+            this.setOpen(false);
+        });
+
+        // Setup options
+        this.setOptions(options);
+        this.selectOption(initial);
+    }
+
+    setOptions(options: { [key: string]: string }) {
         this.options = options;
+        this.elementOptions.innerHTML = "";
+
+        // If no options update class
+        let noOptions = Object.keys(this.options).length == 0;
+        this.element.classList.toggle("no-options", noOptions);
+        this.elementIconSelect.src = noOptions ? "assets/icon-cross.png" : "assets/icon-dropdown.png";
+
+        // Create option elements
         for (let option in this.options) {
-            // Create option element
             let optionElement = createElement(`<div>`);
-            let imgElement = createElement(`<img>`) as HTMLImageElement;
-            imgElement.src = this.options[option];
-            optionElement.appendChild(imgElement);
             this.elementOptions.appendChild(optionElement);
+
+            // Mode based content
+            if (this.mode == "icon") {
+                let imgElement = createElement(`<img>`) as HTMLImageElement;
+                imgElement.src = this.options[option];
+                optionElement.appendChild(imgElement);
+            } else {
+                optionElement.innerText = this.options[option];
+            }
 
             // Add event listener
             optionElement.addEventListener("click", (e) => {
                 e.stopPropagation();
                 this.selectOption(option);
-                this.elementOptions.style.display = "none";
             });
         }
-
-        // Toggle dropdown visibility on click
-        this.element.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.elementOptions.style.display = this.elementOptions.style.display == "none" ? "flex" : "none";
-        });
-
-        // Setup select event and select initial
-        this.selectEvent = new ListenableEvent();
-        if (callback != null) this.selectEvent.subscribe(callback);
-        this.selectOption(initial);
     }
 
-    selectOption(option: string) {
+    selectOption(option: string | null) {
+        // If option is null deselect options
+        if (option == null) {
+            this.selected = "";
+            this.elementCurrent.innerText = "None";
+            this.setOpen(false);
+            return;
+        }
+
         // Set selected option and update icon
         this.selected = option;
-        this.elementIconCurrent.src = this.options[option];
+
+        if (this.mode == "icon") {
+            this.elementCurrentIcon.src = this.options[option];
+        } else {
+            this.elementCurrent.innerText = this.options[option];
+        }
+
         this.selectEvent.fire(option);
+        this.setOpen(false);
+    }
+
+    setOpen(open: boolean) {
+        if (open == this.isOpen) return;
+        if (open && Object.keys(this.options).length == 0) return;
+
+        this.elementOptions.style.display = open ? "flex" : "none";
+        this.element.classList.toggle("open", open);
+        this.isOpen = open;
     }
 }
 
@@ -587,23 +650,43 @@ class ScrollableDiv {
 
 class WidgetManager {
     nextID: number;
-    widgets: { [key: number]: Widget };
+    widgets: { [key: string]: Widget };
+    onAddWidgetEvent: ListenableEvent;
     onRemoveWidgetEvent: ListenableEvent;
 
     constructor() {
         this.nextID = 0;
         this.widgets = {};
+        this.onAddWidgetEvent = new ListenableEvent();
         this.onRemoveWidgetEvent = new ListenableEvent();
     }
 
-    registerWidget(widget: Widget): number {
-        this.widgets[this.nextID] = widget;
+    getNextID(): number {
         return this.nextID++;
+    }
+
+    registerWidget(widget: Widget): void {
+        this.widgets[widget.id] = widget;
+        this.onAddWidgetEvent.fire(widget);
     }
 
     removeWidget(id: number) {
         delete this.widgets[id];
         this.onRemoveWidgetEvent.fire(id);
+    }
+
+    getAvailableSources(widget: Widget): { [key: string]: Widget } {
+        if (widget.getSourceType() == "None") return {};
+        let sources = {};
+        for (let id in this.widgets) {
+            if (id != widget.id.toString()) {
+                if (this.widgets[id].getOutputType() == "None") continue;
+                if (this.widgets[id].getOutputType() == widget.getSourceType()) {
+                    sources[id] = this.widgets[id];
+                }
+            }
+        }
+        return sources;
     }
 }
 
@@ -616,20 +699,32 @@ class WidgetFrame {
         </div>
         <div class="widget-content"></div>
         <div class="widget-footer">
-            <p>Hello World</p>
+            <div class="widget-footer-dropdown"></div>
+            <p class="widget-footer-input-type">Message[]</p>
+            <img src="assets/icon-arrow.png">
+            <p class="widget-footer-output-type">Message[]</p>
         </div>
     </div>`;
 
+    widget: Widget;
+    id: number;
+    isClosed: boolean;
+    isFooterClosed: boolean;
     element: HTMLElement;
     elementHeader: HTMLElement;
     elementTitle: HTMLElement;
     elementButtonBar: HTMLElement;
     elementContent: HTMLElement;
+    elementFooter: HTMLElement;
+    elementFooterSourceDropdown: HTMLElement;
+    elementFooterInputType: HTMLElement;
+    elementFooterOutputType: HTMLElement;
     footerButton: ToggleButton;
-    isClosed: boolean;
-    isFooterClosed: boolean;
+    sourceDropdown: Dropdown;
 
-    constructor(parent: HTMLElement | null = null, count: number, title: string = "") {
+    constructor(parent: HTMLElement | null = null, widget: Widget, title: string = "") {
+        this.widget = widget;
+        this.id = widget.id;
         this.isClosed = false;
         this.isFooterClosed = true;
 
@@ -639,23 +734,49 @@ class WidgetFrame {
         this.elementTitle = this.element.querySelector(".widget-title") as HTMLElement;
         this.elementButtonBar = this.element.querySelector(".widget-button-bar") as HTMLElement;
         this.elementContent = this.element.querySelector(".widget-content") as HTMLElement;
-        this.footerButton = new ToggleButton(false, "assets/icon-connection.png", "assets/icon-connection.png", (toggled) => {
+        this.elementFooter = this.element.querySelector(".widget-footer") as HTMLElement;
+        this.elementFooterSourceDropdown = this.element.querySelector(".widget-footer-dropdown") as HTMLElement;
+        this.elementFooterInputType = this.element.querySelector(".widget-footer-input-type") as HTMLElement;
+        this.elementFooterOutputType = this.element.querySelector(".widget-footer-output-type") as HTMLElement;
+        this.footerButton = new ToggleButton(false, "assets/icon-connection.png", "assets/icon-connection.png");
+        this.footerButton.clickEvent.listen(this, (toggled) => {
             this.setFooterClosed(!toggled);
+        });
+        this.sourceDropdown = new Dropdown({}, null, "text");
+        this.sourceDropdown.selectEvent.listen(this, (source) => {
+            widget.setSourceWidget(WIDGET_MANAGER.widgets[source]);
         });
 
         // Connect elements
         if (parent != null) parent.appendChild(this.element);
+        this.elementFooterSourceDropdown.appendChild(this.sourceDropdown.element);
         this.elementHeader.appendChild(this.footerButton.element);
 
         // Add title close listener
         this.elementHeader.addEventListener("click", () => this.setClosed(!this.isClosed));
 
+        // Listen to new widgets
+        WIDGET_MANAGER.onAddWidgetEvent.listen(this, (widget) => this.updateAvailableSources());
+
         // Set element values
         this.setTitle(title);
+        this.footerButton.setToggled(true);
+        this.elementFooterInputType.innerText = this.widget.getSourceType();
+        this.elementFooterOutputType.innerText = this.widget.getOutputType();
+        this.updateAvailableSources();
+    }
+
+    updateAvailableSources() {
+        const availableSources = WIDGET_MANAGER.getAvailableSources(this.widget);
+        let sourceNames = {};
+        for (let id in availableSources) {
+            sourceNames[id] = availableSources[id].getTitle();
+        }
+        this.sourceDropdown.setOptions(sourceNames);
     }
 
     setTitle(title: string) {
-        this.elementTitle.textContent = title;
+        this.elementTitle.innerHTML = `<span class="widget-id">${this.id}</span> ${title}`;
     }
 
     addHeaderExtra(extra: HTMLElement) {
@@ -683,14 +804,24 @@ abstract class Widget {
     sourceWidget: Widget;
 
     constructor(title: string) {
-        this.id = WIDGET_MANAGER.registerWidget(this);
-        this.container = new WidgetFrame(ELEMENT_WIDGET_FEED, this.id, title);
+        this.id = WIDGET_MANAGER.getNextID();
+        this.container = new WidgetFrame(ELEMENT_WIDGET_FEED, this, title);
+        WIDGET_MANAGER.registerWidget(this);
+    }
+
+    getTitle(): string {
+        return this.container.elementTitle.innerText;
+    }
+
+    trySetSourceWidget(widget: Widget) {
+        this.container.sourceDropdown.selectOption(widget.id.toString());
     }
 
     abstract setSourceWidget(widget: Widget): void;
     abstract getSourceType(): string;
     abstract getOutputEvent(): ListenableEvent;
     abstract getOutputType(): string;
+    abstract getOutput(): any;
 }
 
 class InputWidget extends Widget {
@@ -739,6 +870,9 @@ class InputWidget extends Widget {
         super("Input");
         this.delimType = "comma";
         this.convertOption = "None";
+        this.rawMessages = "";
+        this.outputMessages = [];
+        this.alphabet = [];
 
         // Setup elements
         this.element = createElement(InputWidget.HTML);
@@ -760,11 +894,12 @@ class InputWidget extends Widget {
                 space: "assets/icon-space.png",
             },
             "comma",
-            (delimType) => {
-                this.delimType = delimType;
-                this.processMessages();
-            }
+            "icon"
         );
+        this.delimeterDropdown.selectEvent.listen(this, (delimType) => {
+            this.delimType = delimType;
+            this.processMessages();
+        });
         this.convertDropdown = new Dropdown(
             {
                 None: "assets/icon-identity.png",
@@ -774,12 +909,14 @@ class InputWidget extends Widget {
                 FromAscii: "assets/icon-from-ascii.png",
             },
             "None",
-            (convertOption) => {
-                this.convertOption = convertOption;
-                this.processMessages();
-            }
+            "icon"
         );
-        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+        this.convertDropdown.selectEvent.listen(this, (convertOption) => {
+            this.convertOption = convertOption;
+            this.processMessages();
+        });
+        this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-expand.png");
+        this.toggleSpacingButton.clickEvent.listen(this, (toggled) => {
             this.parsedMessageView.setLetterGapsActive(toggled);
             this.elementAlphabet.classList.toggle("use-gaps", toggled);
         });
@@ -844,7 +981,7 @@ class InputWidget extends Widget {
     }
 
     getSourceType(): string {
-        throw new Error("Cannot get source type for input widget");
+        return "None";
     }
 
     getOutputEvent(): ListenableEvent {
@@ -853,6 +990,10 @@ class InputWidget extends Widget {
 
     getOutputType(): string {
         return "Message[]";
+    }
+
+    getOutput(): Message[] {
+        return this.outputMessages;
     }
 }
 
@@ -866,6 +1007,7 @@ class StatsWidget extends Widget {
     messages: Message[];
     alphabet: string[];
     calculatedStats: { [key: string]: number };
+    sourceWidget: Widget;
 
     constructor() {
         super("Statistics");
@@ -912,11 +1054,19 @@ class StatsWidget extends Widget {
             throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
         }
 
-        widget.getOutputEvent().subscribe((messages: Message[]) => {
-            this.messages = messages;
-            this.alphabet = parseAlphabet(messages);
-            this.recalculateStats();
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    }
+
+    onSourceOutput(messages: Message[]) {
+        this.messages = messages;
+        this.alphabet = parseAlphabet(messages);
+        this.recalculateStats();
     }
 
     getSourceType(): string {
@@ -928,6 +1078,10 @@ class StatsWidget extends Widget {
     }
 
     getOutputType(): string {
+        return "None";
+    }
+
+    getOutput(): any {
         throw new Error("Method not implemented.");
     }
 }
@@ -937,13 +1091,15 @@ class AlignmentWidget extends Widget {
     toggleSpacingButton: ToggleButton;
     messages: Message[];
     messagesAlignments: NumberMessage[];
+    sourceWidget: Widget;
 
     constructor() {
         super("Alignments");
 
         // Setup elements
         this.messageView = new MessagesView();
-        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png");
+        this.toggleSpacingButton.clickEvent.listen(this, (toggled) => {
             this.messageView.setLetterGapsActive(toggled);
         });
 
@@ -957,11 +1113,19 @@ class AlignmentWidget extends Widget {
             throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
         }
 
-        widget.getOutputEvent().subscribe((messages: Message[]) => {
-            this.messages = messages;
-            this.messagesAlignments = calculateAlignments(messages);
-            this.messageView.setMessages(this.messages, this.messagesAlignments);
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    }
+
+    onSourceOutput(messages: Message[]) {
+        this.messages = messages;
+        this.messagesAlignments = calculateAlignments(messages);
+        this.messageView.setMessages(this.messages, this.messagesAlignments);
     }
 
     getSourceType(): string {
@@ -973,6 +1137,10 @@ class AlignmentWidget extends Widget {
     }
 
     getOutputType(): string {
+        return "None";
+    }
+
+    getOutput(): any {
         throw new Error("Method not implemented.");
     }
 }
@@ -988,6 +1156,7 @@ class GapsWidget extends Widget {
     messages: Message[];
     messagesGaps: number[][][];
     messagesGapsValues: NumberMessage[];
+    sourceWidget: Widget;
 
     constructor(gapLimit: number = 15) {
         super("Gap Distances (< " + gapLimit + ")");
@@ -997,14 +1166,17 @@ class GapsWidget extends Widget {
 
         // Setup elements
         this.messageView = new MessagesView();
-        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png");
+        this.toggleSpacingButton.clickEvent.listen(this, (toggled) => {
             this.messageView.setLetterGapsActive(toggled);
         });
-        this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-ruler.png", (toggled) => {
+        this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-ruler.png");
+        this.toggleShowGapsButton.clickEvent.listen(this, (toggled) => {
             this.showGaps = toggled;
             this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
         });
-        this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-paperclip-on.png", (toggled) => {
+        this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-paperclip-on.png");
+        this.toggleIncludeEndButton.clickEvent.listen(this, (toggled) => {
             this.includeEnd = toggled;
             this.recalculateGaps();
         });
@@ -1039,10 +1211,18 @@ class GapsWidget extends Widget {
             throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
         }
 
-        widget.getOutputEvent().subscribe((messages: Message[]) => {
-            this.messages = messages;
-            this.recalculateGaps();
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    }
+
+    onSourceOutput(messages: Message[]) {
+        this.messages = messages;
+        this.recalculateGaps();
     }
 
     getSourceType(): string {
@@ -1054,6 +1234,10 @@ class GapsWidget extends Widget {
     }
 
     getOutputType(): string {
+        return "None";
+    }
+
+    getOutput(): any {
         throw new Error("Method not implemented.");
     }
 }
@@ -1071,6 +1255,7 @@ class FrequencyWidget extends Widget {
     messages: Message[];
     messagesFreq: { [key: string]: number };
     chart: Chart;
+    sourceWidget: Widget;
 
     constructor(title = "Letter Frequencies") {
         super(title);
@@ -1079,7 +1264,8 @@ class FrequencyWidget extends Widget {
         // Setup elements
         this.element = createElement(FrequencyWidget.HTML);
         this.elementChart = this.element.querySelector("#freq-chart") as HTMLCanvasElement;
-        this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-sorted.png", (toggled) => {
+        this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-sorted.png");
+        this.toggleSortedButton.clickEvent.listen(this, (toggled) => {
             this.sorted = toggled;
             this.updateChart();
         });
@@ -1128,11 +1314,19 @@ class FrequencyWidget extends Widget {
             throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
         }
 
-        widget.getOutputEvent().subscribe((messages: Message[]) => {
-            this.messages = messages;
-            this.messagesFreq = calculateFrequencies(messages);
-            this.updateChart();
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    }
+
+    onSourceOutput(messages: Message[]) {
+        this.messages = messages;
+        this.messagesFreq = calculateFrequencies(messages);
+        this.updateChart();
     }
 
     getSourceType(): string {
@@ -1144,6 +1338,10 @@ class FrequencyWidget extends Widget {
     }
 
     getOutputType(): string {
+        return "None";
+    }
+
+    getOutput(): any {
         throw new Error("Method not implemented.");
     }
 }
@@ -1157,6 +1355,7 @@ class DeltasWidget extends Widget {
     messages: NumberMessage[];
     messagesDeltas: NumberMessage[];
     outputEvent: ListenableEvent;
+    sourceWidget: Widget;
 
     constructor() {
         super("Deltas");
@@ -1165,10 +1364,12 @@ class DeltasWidget extends Widget {
 
         // Setup elements
         this.messageView = new MessagesView("Colour");
-        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", (toggled) => {
+        this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png");
+        this.toggleSpacingButton.clickEvent.listen(this, (toggled) => {
             this.messageView.setLetterGapsActive(toggled);
         });
-        this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-pct.png", (toggled) => {
+        this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-pct.png");
+        this.toggleModButton.clickEvent.listen(this, (toggled) => {
             this.mod = toggled;
             this.recalculateDeltas();
         });
@@ -1224,12 +1425,20 @@ class DeltasWidget extends Widget {
             throw new Error(`Cannot set source widget of different type: ${widget.getOutputType()} != ${this.getSourceType()}`);
         }
 
-        widget.getOutputEvent().subscribe((messages: Message[]) => {
-            this.messages = messages as NumberMessage[];
-            const alphabet = parseAlphabet(messages);
-            this.modSize = alphabet.length;
-            this.recalculateDeltas();
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    }
+
+    onSourceOutput(messages: Message[]) {
+        this.messages = messages as NumberMessage[];
+        const alphabet = parseAlphabet(messages);
+        this.modSize = alphabet.length;
+        this.recalculateDeltas();
     }
 
     getSourceType(): string {
@@ -1242,6 +1451,10 @@ class DeltasWidget extends Widget {
 
     getOutputType(): string {
         return "Message[]";
+    }
+
+    getOutput(): Message[] {
+        return this.messagesDeltas;
     }
 }
 
@@ -1260,12 +1473,12 @@ class DeltasWidget extends Widget {
     const widgetDeltasFreq = new FrequencyWidget("Delta Frequencies");
 
     // Hook up all widgets
-    widgetStats.setSourceWidget(widgetInput);
-    widgetShared.setSourceWidget(widgetInput);
-    widgetGaps.setSourceWidget(widgetInput);
-    widgetFreq.setSourceWidget(widgetInput);
-    widgetDeltas.setSourceWidget(widgetInput);
-    widgetDeltasFreq.setSourceWidget(widgetDeltas);
+    widgetStats.trySetSourceWidget(widgetInput);
+    widgetShared.trySetSourceWidget(widgetInput);
+    widgetGaps.trySetSourceWidget(widgetInput);
+    widgetFreq.trySetSourceWidget(widgetInput);
+    widgetDeltas.trySetSourceWidget(widgetInput);
+    widgetDeltasFreq.trySetSourceWidget(widgetDeltas);
 
     // Set initial value
     widgetInput.setContent(EXAMPLE_MESSAGES);

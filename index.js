@@ -117,6 +117,10 @@ function convertMessages(messages, convertOption) {
     return output;
 }
 function parseAlphabet(messages) {
+    if (messages == null)
+        return [];
+    if (messages.length == 0)
+        return [];
     // Get all unique characters
     var messagesStr = messages;
     var alphSet = new Set();
@@ -232,17 +236,20 @@ function createElement(html) {
 }
 var ListenableEvent = /** @class */ (function () {
     function ListenableEvent() {
-        this.listeners = [];
+        this.listeners = new Map();
     }
-    ListenableEvent.prototype.subscribe = function (listener) {
-        this.listeners.push(listener);
+    ListenableEvent.prototype.listen = function (listener, callback) {
+        this.listeners.set(listener, callback);
+    };
+    ListenableEvent.prototype.unlisten = function (listener) {
+        this.listeners.delete(listener);
     };
     ListenableEvent.prototype.fire = function () {
         var args = [];
         for (var _i = 0; _i < arguments.length; _i++) {
             args[_i] = arguments[_i];
         }
-        this.listeners.forEach(function (listener) { return listener.apply(void 0, args); });
+        this.listeners.forEach(function (callback) { return callback.apply(void 0, args); });
     };
     return ListenableEvent;
 }());
@@ -384,7 +391,7 @@ var MessagesView = /** @class */ (function () {
     return MessagesView;
 }());
 var ToggleButton = /** @class */ (function () {
-    function ToggleButton(initialValue, offIconPath, onIconPath, callback, glowWhenToggled) {
+    function ToggleButton(initialValue, offIconPath, onIconPath, glowWhenToggled) {
         if (glowWhenToggled === void 0) { glowWhenToggled = true; }
         var _this = this;
         this.clickEvent = new ListenableEvent();
@@ -401,9 +408,6 @@ var ToggleButton = /** @class */ (function () {
             e.stopPropagation();
             _this.setToggled(!_this.isToggled);
         });
-        // Subscribe callback if provided
-        if (callback != null)
-            this.clickEvent.subscribe(callback);
     }
     ToggleButton.prototype.setToggled = function (toggled) {
         this.isToggled = toggled;
@@ -416,51 +420,96 @@ var ToggleButton = /** @class */ (function () {
     return ToggleButton;
 }());
 var Dropdown = /** @class */ (function () {
-    function Dropdown(options, initial, callback) {
+    function Dropdown(options, initial, mode) {
+        if (mode === void 0) { mode = "icon"; }
         var _this = this;
+        this.mode = mode;
+        this.isOpen = false;
+        this.selectEvent = new ListenableEvent();
         // Setup elements
         this.element = createElement(Dropdown.HTML);
-        this.elementIconCurrent = this.element.querySelector(".dropdown-icon-current");
+        this.elementMain = this.element.querySelector(".dropdown-main");
+        this.elementCurrent = this.element.querySelector(".dropdown-current");
         this.elementIconSelect = this.element.querySelector(".dropdown-icon-select");
         this.elementOptions = this.element.querySelector(".dropdown-options");
         this.elementOptions.style.display = "none";
+        if (this.mode == "icon") {
+            this.elementCurrentIcon = createElement("<img>");
+            this.elementCurrent.appendChild(this.elementCurrentIcon);
+        }
+        // Setup events
+        this.elementMain.addEventListener("click", function (e) {
+            e.stopPropagation();
+            _this.setOpen(!_this.isOpen);
+        });
+        window.addEventListener("click", function () {
+            _this.setOpen(false);
+        });
+        // Setup options
+        this.setOptions(options);
+        this.selectOption(initial);
+    }
+    Dropdown.prototype.setOptions = function (options) {
+        var _this = this;
         this.options = options;
+        this.elementOptions.innerHTML = "";
+        // If no options update class
+        var noOptions = Object.keys(this.options).length == 0;
+        this.element.classList.toggle("no-options", noOptions);
+        this.elementIconSelect.src = noOptions ? "assets/icon-cross.png" : "assets/icon-dropdown.png";
         var _loop_3 = function (option) {
-            // Create option element
             var optionElement = createElement("<div>");
-            var imgElement = createElement("<img>");
-            imgElement.src = this_2.options[option];
-            optionElement.appendChild(imgElement);
             this_2.elementOptions.appendChild(optionElement);
+            // Mode based content
+            if (this_2.mode == "icon") {
+                var imgElement = createElement("<img>");
+                imgElement.src = this_2.options[option];
+                optionElement.appendChild(imgElement);
+            }
+            else {
+                optionElement.innerText = this_2.options[option];
+            }
             // Add event listener
             optionElement.addEventListener("click", function (e) {
                 e.stopPropagation();
                 _this.selectOption(option);
-                _this.elementOptions.style.display = "none";
             });
         };
         var this_2 = this;
+        // Create option elements
         for (var option in this.options) {
             _loop_3(option);
         }
-        // Toggle dropdown visibility on click
-        this.element.addEventListener("click", function (e) {
-            e.stopPropagation();
-            _this.elementOptions.style.display = _this.elementOptions.style.display == "none" ? "flex" : "none";
-        });
-        // Setup select event and select initial
-        this.selectEvent = new ListenableEvent();
-        if (callback != null)
-            this.selectEvent.subscribe(callback);
-        this.selectOption(initial);
-    }
+    };
     Dropdown.prototype.selectOption = function (option) {
+        // If option is null deselect options
+        if (option == null) {
+            this.selected = "";
+            this.elementCurrent.innerText = "None";
+            this.setOpen(false);
+            return;
+        }
         // Set selected option and update icon
         this.selected = option;
-        this.elementIconCurrent.src = this.options[option];
+        if (this.mode == "icon") {
+            this.elementCurrentIcon.src = this.options[option];
+        }
+        else {
+            this.elementCurrent.innerText = this.options[option];
+        }
         this.selectEvent.fire(option);
+        this.setOpen(false);
     };
-    Dropdown.HTML = "\n    <div class=\"dropdown\">\n        <img class=\"dropdown-icon-current\"><img class=\"dropdown-icon-select\" src=\"assets/icon-dropdown.png\">\n        <div class=\"dropdown-options\"></div>\n    </div>";
+    Dropdown.prototype.setOpen = function (open) {
+        if (open == this.isOpen)
+            return;
+        if (open && Object.keys(this.options).length == 0)
+            return;
+        this.elementOptions.style.display = open ? "flex" : "none";
+        this.element.classList.toggle("open", open);
+        this.isOpen = open;
+    };
+    Dropdown.HTML = "\n    <div class=\"dropdown\">\n        <div class=\"dropdown-main\">\n            <div class=\"dropdown-current\"></div>\n            <img class=\"dropdown-icon-select\" src=\"assets/icon-dropdown.png\">\n        </div>\n        <div class=\"dropdown-options\"></div>\n    </div>";
     return Dropdown;
 }());
 var ScrollableDiv = /** @class */ (function () {
@@ -526,23 +575,44 @@ var WidgetManager = /** @class */ (function () {
     function WidgetManager() {
         this.nextID = 0;
         this.widgets = {};
+        this.onAddWidgetEvent = new ListenableEvent();
         this.onRemoveWidgetEvent = new ListenableEvent();
     }
-    WidgetManager.prototype.registerWidget = function (widget) {
-        this.widgets[this.nextID] = widget;
+    WidgetManager.prototype.getNextID = function () {
         return this.nextID++;
+    };
+    WidgetManager.prototype.registerWidget = function (widget) {
+        this.widgets[widget.id] = widget;
+        this.onAddWidgetEvent.fire(widget);
     };
     WidgetManager.prototype.removeWidget = function (id) {
         delete this.widgets[id];
         this.onRemoveWidgetEvent.fire(id);
     };
+    WidgetManager.prototype.getAvailableSources = function (widget) {
+        if (widget.getSourceType() == "None")
+            return {};
+        var sources = {};
+        for (var id in this.widgets) {
+            if (id != widget.id.toString()) {
+                if (this.widgets[id].getOutputType() == "None")
+                    continue;
+                if (this.widgets[id].getOutputType() == widget.getSourceType()) {
+                    sources[id] = this.widgets[id];
+                }
+            }
+        }
+        return sources;
+    };
     return WidgetManager;
 }());
 var WidgetFrame = /** @class */ (function () {
-    function WidgetFrame(parent, count, title) {
+    function WidgetFrame(parent, widget, title) {
         if (parent === void 0) { parent = null; }
         if (title === void 0) { title = ""; }
         var _this = this;
+        this.widget = widget;
+        this.id = widget.id;
         this.isClosed = false;
         this.isFooterClosed = true;
         // Setup container
@@ -551,20 +621,44 @@ var WidgetFrame = /** @class */ (function () {
         this.elementTitle = this.element.querySelector(".widget-title");
         this.elementButtonBar = this.element.querySelector(".widget-button-bar");
         this.elementContent = this.element.querySelector(".widget-content");
-        this.footerButton = new ToggleButton(false, "assets/icon-connection.png", "assets/icon-connection.png", function (toggled) {
+        this.elementFooter = this.element.querySelector(".widget-footer");
+        this.elementFooterSourceDropdown = this.element.querySelector(".widget-footer-dropdown");
+        this.elementFooterInputType = this.element.querySelector(".widget-footer-input-type");
+        this.elementFooterOutputType = this.element.querySelector(".widget-footer-output-type");
+        this.footerButton = new ToggleButton(false, "assets/icon-connection.png", "assets/icon-connection.png");
+        this.footerButton.clickEvent.listen(this, function (toggled) {
             _this.setFooterClosed(!toggled);
+        });
+        this.sourceDropdown = new Dropdown({}, null, "text");
+        this.sourceDropdown.selectEvent.listen(this, function (source) {
+            widget.setSourceWidget(WIDGET_MANAGER.widgets[source]);
         });
         // Connect elements
         if (parent != null)
             parent.appendChild(this.element);
+        this.elementFooterSourceDropdown.appendChild(this.sourceDropdown.element);
         this.elementHeader.appendChild(this.footerButton.element);
         // Add title close listener
         this.elementHeader.addEventListener("click", function () { return _this.setClosed(!_this.isClosed); });
+        // Listen to new widgets
+        WIDGET_MANAGER.onAddWidgetEvent.listen(this, function (widget) { return _this.updateAvailableSources(); });
         // Set element values
         this.setTitle(title);
+        this.footerButton.setToggled(true);
+        this.elementFooterInputType.innerText = this.widget.getSourceType();
+        this.elementFooterOutputType.innerText = this.widget.getOutputType();
+        this.updateAvailableSources();
     }
+    WidgetFrame.prototype.updateAvailableSources = function () {
+        var availableSources = WIDGET_MANAGER.getAvailableSources(this.widget);
+        var sourceNames = {};
+        for (var id in availableSources) {
+            sourceNames[id] = availableSources[id].getTitle();
+        }
+        this.sourceDropdown.setOptions(sourceNames);
+    };
     WidgetFrame.prototype.setTitle = function (title) {
-        this.elementTitle.textContent = title;
+        this.elementTitle.innerHTML = "<span class=\"widget-id\">".concat(this.id, "</span> ").concat(title);
     };
     WidgetFrame.prototype.addHeaderExtra = function (extra) {
         this.elementButtonBar.appendChild(extra);
@@ -580,14 +674,21 @@ var WidgetFrame = /** @class */ (function () {
         this.isFooterClosed = isClosed;
         this.element.classList.toggle("footer-closed", this.isFooterClosed);
     };
-    WidgetFrame.HTML = "\n    <div class=\"widget-container footer-closed\">\n        <div class=\"widget-header\">\n            <div class=\"widget-title\"></div>\n            <div class=\"widget-button-bar\"></div>\n        </div>\n        <div class=\"widget-content\"></div>\n        <div class=\"widget-footer\">\n            <p>Hello World</p>\n        </div>\n    </div>";
+    WidgetFrame.HTML = "\n    <div class=\"widget-container footer-closed\">\n        <div class=\"widget-header\">\n            <div class=\"widget-title\"></div>\n            <div class=\"widget-button-bar\"></div>\n        </div>\n        <div class=\"widget-content\"></div>\n        <div class=\"widget-footer\">\n            <div class=\"widget-footer-dropdown\"></div>\n            <p class=\"widget-footer-input-type\">Message[]</p>\n            <img src=\"assets/icon-arrow.png\">\n            <p class=\"widget-footer-output-type\">Message[]</p>\n        </div>\n    </div>";
     return WidgetFrame;
 }());
 var Widget = /** @class */ (function () {
     function Widget(title) {
-        this.id = WIDGET_MANAGER.registerWidget(this);
-        this.container = new WidgetFrame(ELEMENT_WIDGET_FEED, this.id, title);
+        this.id = WIDGET_MANAGER.getNextID();
+        this.container = new WidgetFrame(ELEMENT_WIDGET_FEED, this, title);
+        WIDGET_MANAGER.registerWidget(this);
     }
+    Widget.prototype.getTitle = function () {
+        return this.container.elementTitle.innerText;
+    };
+    Widget.prototype.trySetSourceWidget = function (widget) {
+        this.container.sourceDropdown.selectOption(widget.id.toString());
+    };
     return Widget;
 }());
 var InputWidget = /** @class */ (function (_super) {
@@ -596,6 +697,9 @@ var InputWidget = /** @class */ (function (_super) {
         var _this = _super.call(this, "Input") || this;
         _this.delimType = "comma";
         _this.convertOption = "None";
+        _this.rawMessages = "";
+        _this.outputMessages = [];
+        _this.alphabet = [];
         // Setup elements
         _this.element = createElement(InputWidget.HTML);
         _this.elementInputFieldContainer = _this.element.querySelector(".input-field-container");
@@ -613,7 +717,8 @@ var InputWidget = /** @class */ (function (_super) {
             dot: "assets/icon-dot.png",
             letter: "assets/icon-a.png",
             space: "assets/icon-space.png",
-        }, "comma", function (delimType) {
+        }, "comma", "icon");
+        _this.delimeterDropdown.selectEvent.listen(_this, function (delimType) {
             _this.delimType = delimType;
             _this.processMessages();
         });
@@ -623,11 +728,13 @@ var InputWidget = /** @class */ (function (_super) {
             Unique: "assets/icon-abacus.png",
             ToAscii: "assets/icon-to-ascii.png",
             FromAscii: "assets/icon-from-ascii.png",
-        }, "None", function (convertOption) {
+        }, "None", "icon");
+        _this.convertDropdown.selectEvent.listen(_this, function (convertOption) {
             _this.convertOption = convertOption;
             _this.processMessages();
         });
-        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+        _this.toggleSpacingButton = new ToggleButton(true, "assets/icon-expand.png", "assets/icon-expand.png");
+        _this.toggleSpacingButton.clickEvent.listen(_this, function (toggled) {
             _this.parsedMessageView.setLetterGapsActive(toggled);
             _this.elementAlphabet.classList.toggle("use-gaps", toggled);
         });
@@ -685,13 +792,16 @@ var InputWidget = /** @class */ (function (_super) {
         throw new Error("Cannot set source widget for input widget");
     };
     InputWidget.prototype.getSourceType = function () {
-        throw new Error("Cannot get source type for input widget");
+        return "None";
     };
     InputWidget.prototype.getOutputEvent = function () {
         return this.outputEvent;
     };
     InputWidget.prototype.getOutputType = function () {
         return "Message[]";
+    };
+    InputWidget.prototype.getOutput = function () {
+        return this.outputMessages;
     };
     InputWidget.HTML = "\n    <div class=\"input-container\">\n        <div class=\"input-field-container\">\n            <img src=\"assets/icon-input.png\">\n        </div>\n\n        <div class=\"input-options-container\">\n            <p>Delimeter</p>\n            <div class=\"input-options-delimeter\"></div>\n            <p>Convert Mode</p>\n            <div class=\"input-options-convert\"></div>\n        </div>\n\n        <div class=\"input-parsed-container\"></div>\n\n        <div class=\"input-alphabet-container\">\n            <img src=\"assets/icon-alphabet.png\">\n        </div>\n    </div>";
     return InputWidget;
@@ -736,15 +846,20 @@ var StatsWidget = /** @class */ (function (_super) {
         }
     };
     StatsWidget.prototype.setSourceWidget = function (widget) {
-        var _this = this;
         if (widget.getOutputType() != this.getSourceType()) {
             throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
         }
-        widget.getOutputEvent().subscribe(function (messages) {
-            _this.messages = messages;
-            _this.alphabet = parseAlphabet(messages);
-            _this.recalculateStats();
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    };
+    StatsWidget.prototype.onSourceOutput = function (messages) {
+        this.messages = messages;
+        this.alphabet = parseAlphabet(messages);
+        this.recalculateStats();
     };
     StatsWidget.prototype.getSourceType = function () {
         return "Message[]";
@@ -753,6 +868,9 @@ var StatsWidget = /** @class */ (function (_super) {
         throw new Error("Method not implemented.");
     };
     StatsWidget.prototype.getOutputType = function () {
+        return "None";
+    };
+    StatsWidget.prototype.getOutput = function () {
         throw new Error("Method not implemented.");
     };
     StatsWidget.HTML = "\n        <div class=\"stats-container\">\n        </div>\n    ";
@@ -764,7 +882,8 @@ var AlignmentWidget = /** @class */ (function (_super) {
         var _this = _super.call(this, "Alignments") || this;
         // Setup elements
         _this.messageView = new MessagesView();
-        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png");
+        _this.toggleSpacingButton.clickEvent.listen(_this, function (toggled) {
             _this.messageView.setLetterGapsActive(toggled);
         });
         // Add elements to each other
@@ -773,15 +892,20 @@ var AlignmentWidget = /** @class */ (function (_super) {
         return _this;
     }
     AlignmentWidget.prototype.setSourceWidget = function (widget) {
-        var _this = this;
         if (widget.getOutputType() != this.getSourceType()) {
             throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
         }
-        widget.getOutputEvent().subscribe(function (messages) {
-            _this.messages = messages;
-            _this.messagesAlignments = calculateAlignments(messages);
-            _this.messageView.setMessages(_this.messages, _this.messagesAlignments);
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    };
+    AlignmentWidget.prototype.onSourceOutput = function (messages) {
+        this.messages = messages;
+        this.messagesAlignments = calculateAlignments(messages);
+        this.messageView.setMessages(this.messages, this.messagesAlignments);
     };
     AlignmentWidget.prototype.getSourceType = function () {
         return "Message[]";
@@ -790,6 +914,9 @@ var AlignmentWidget = /** @class */ (function (_super) {
         throw new Error("Method not implemented.");
     };
     AlignmentWidget.prototype.getOutputType = function () {
+        return "None";
+    };
+    AlignmentWidget.prototype.getOutput = function () {
         throw new Error("Method not implemented.");
     };
     return AlignmentWidget;
@@ -804,14 +931,17 @@ var GapsWidget = /** @class */ (function (_super) {
         _this.includeEnd = false;
         // Setup elements
         _this.messageView = new MessagesView();
-        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png");
+        _this.toggleSpacingButton.clickEvent.listen(_this, function (toggled) {
             _this.messageView.setLetterGapsActive(toggled);
         });
-        _this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-ruler.png", function (toggled) {
+        _this.toggleShowGapsButton = new ToggleButton(false, "assets/icon-ruler.png", "assets/icon-ruler.png");
+        _this.toggleShowGapsButton.clickEvent.listen(_this, function (toggled) {
             _this.showGaps = toggled;
             _this.messageView.setMessages(_this.showGaps ? _this.messagesGapsValues : _this.messages, _this.messagesGaps);
         });
-        _this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-paperclip-on.png", function (toggled) {
+        _this.toggleIncludeEndButton = new ToggleButton(false, "assets/icon-paperclip-on.png", "assets/icon-paperclip-on.png");
+        _this.toggleIncludeEndButton.clickEvent.listen(_this, function (toggled) {
             _this.includeEnd = toggled;
             _this.recalculateGaps();
         });
@@ -836,14 +966,19 @@ var GapsWidget = /** @class */ (function (_super) {
         this.messageView.setMessages(this.showGaps ? this.messagesGapsValues : this.messages, this.messagesGaps);
     };
     GapsWidget.prototype.setSourceWidget = function (widget) {
-        var _this = this;
         if (widget.getOutputType() != this.getSourceType()) {
             throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
         }
-        widget.getOutputEvent().subscribe(function (messages) {
-            _this.messages = messages;
-            _this.recalculateGaps();
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    };
+    GapsWidget.prototype.onSourceOutput = function (messages) {
+        this.messages = messages;
+        this.recalculateGaps();
     };
     GapsWidget.prototype.getSourceType = function () {
         return "Message[]";
@@ -852,6 +987,9 @@ var GapsWidget = /** @class */ (function (_super) {
         throw new Error("Method not implemented.");
     };
     GapsWidget.prototype.getOutputType = function () {
+        return "None";
+    };
+    GapsWidget.prototype.getOutput = function () {
         throw new Error("Method not implemented.");
     };
     return GapsWidget;
@@ -865,7 +1003,8 @@ var FrequencyWidget = /** @class */ (function (_super) {
         // Setup elements
         _this.element = createElement(FrequencyWidget.HTML);
         _this.elementChart = _this.element.querySelector("#freq-chart");
-        _this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-sorted.png", function (toggled) {
+        _this.toggleSortedButton = new ToggleButton(false, "assets/icon-sorted.png", "assets/icon-sorted.png");
+        _this.toggleSortedButton.clickEvent.listen(_this, function (toggled) {
             _this.sorted = toggled;
             _this.updateChart();
         });
@@ -911,15 +1050,20 @@ var FrequencyWidget = /** @class */ (function (_super) {
         });
     };
     FrequencyWidget.prototype.setSourceWidget = function (widget) {
-        var _this = this;
         if (widget.getOutputType() != this.getSourceType()) {
             throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
         }
-        widget.getOutputEvent().subscribe(function (messages) {
-            _this.messages = messages;
-            _this.messagesFreq = calculateFrequencies(messages);
-            _this.updateChart();
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    };
+    FrequencyWidget.prototype.onSourceOutput = function (messages) {
+        this.messages = messages;
+        this.messagesFreq = calculateFrequencies(messages);
+        this.updateChart();
     };
     FrequencyWidget.prototype.getSourceType = function () {
         return "Message[]";
@@ -928,6 +1072,9 @@ var FrequencyWidget = /** @class */ (function (_super) {
         throw new Error("Method not implemented.");
     };
     FrequencyWidget.prototype.getOutputType = function () {
+        return "None";
+    };
+    FrequencyWidget.prototype.getOutput = function () {
         throw new Error("Method not implemented.");
     };
     FrequencyWidget.HTML = "\n    <div class='chart-container'>\n        <canvas id=\"freq-chart\"></canvas>\n    </div>";
@@ -941,10 +1088,12 @@ var DeltasWidget = /** @class */ (function (_super) {
         _this.modSize = 0;
         // Setup elements
         _this.messageView = new MessagesView("Colour");
-        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png", function (toggled) {
+        _this.toggleSpacingButton = new ToggleButton(false, "assets/icon-expand.png", "assets/icon-expand.png");
+        _this.toggleSpacingButton.clickEvent.listen(_this, function (toggled) {
             _this.messageView.setLetterGapsActive(toggled);
         });
-        _this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-pct.png", function (toggled) {
+        _this.toggleModButton = new ToggleButton(false, "assets/icon-pct.png", "assets/icon-pct.png");
+        _this.toggleModButton.clickEvent.listen(_this, function (toggled) {
             _this.mod = toggled;
             _this.recalculateDeltas();
         });
@@ -990,16 +1139,21 @@ var DeltasWidget = /** @class */ (function (_super) {
         this.outputEvent.fire(this.messagesDeltas);
     };
     DeltasWidget.prototype.setSourceWidget = function (widget) {
-        var _this = this;
         if (widget.getOutputType() != this.getSourceType()) {
             throw new Error("Cannot set source widget of different type: ".concat(widget.getOutputType(), " != ").concat(this.getSourceType()));
         }
-        widget.getOutputEvent().subscribe(function (messages) {
-            _this.messages = messages;
-            var alphabet = parseAlphabet(messages);
-            _this.modSize = alphabet.length;
-            _this.recalculateDeltas();
-        });
+        if (this.sourceWidget != null) {
+            this.sourceWidget.getOutputEvent().unlisten(this);
+        }
+        widget.getOutputEvent().listen(this, this.onSourceOutput.bind(this));
+        this.sourceWidget = widget;
+        this.onSourceOutput(widget.getOutput());
+    };
+    DeltasWidget.prototype.onSourceOutput = function (messages) {
+        this.messages = messages;
+        var alphabet = parseAlphabet(messages);
+        this.modSize = alphabet.length;
+        this.recalculateDeltas();
     };
     DeltasWidget.prototype.getSourceType = function () {
         return "Message[]";
@@ -1009,6 +1163,9 @@ var DeltasWidget = /** @class */ (function (_super) {
     };
     DeltasWidget.prototype.getOutputType = function () {
         return "Message[]";
+    };
+    DeltasWidget.prototype.getOutput = function () {
+        return this.messagesDeltas;
     };
     return DeltasWidget;
 }(Widget));
@@ -1024,12 +1181,12 @@ var DeltasWidget = /** @class */ (function (_super) {
     var widgetDeltas = new DeltasWidget();
     var widgetDeltasFreq = new FrequencyWidget("Delta Frequencies");
     // Hook up all widgets
-    widgetStats.setSourceWidget(widgetInput);
-    widgetShared.setSourceWidget(widgetInput);
-    widgetGaps.setSourceWidget(widgetInput);
-    widgetFreq.setSourceWidget(widgetInput);
-    widgetDeltas.setSourceWidget(widgetInput);
-    widgetDeltasFreq.setSourceWidget(widgetDeltas);
+    widgetStats.trySetSourceWidget(widgetInput);
+    widgetShared.trySetSourceWidget(widgetInput);
+    widgetGaps.trySetSourceWidget(widgetInput);
+    widgetFreq.trySetSourceWidget(widgetInput);
+    widgetDeltas.trySetSourceWidget(widgetInput);
+    widgetDeltasFreq.trySetSourceWidget(widgetDeltas);
     // Set initial value
     widgetInput.setContent(EXAMPLE_MESSAGES);
 })();
