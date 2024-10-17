@@ -2,6 +2,8 @@
 
 A site for simple cryptographical analysis, primarily made for the noita eye puzzle.
 
+https://tomster12.github.io/web-analysis/
+
 ## TODO
 
 - [x] Changeover to typescript
